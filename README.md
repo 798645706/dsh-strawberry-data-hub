@@ -22,9 +22,10 @@
 
 需要 Node.js 24 或更新版本，以及已配置模型的 DSH。当前验证环境为 Windows、Node 24、DSH CLI / dsh-tools `0.1.5-rc.2`。
 
-npm 版本发布后，安装到独立配置：
+首次安装时，先从 Web 模板创建独立配置，再安装插件：
 
 ```powershell
+dsh --profile strawberry --from-default-profile web --dump-config
 dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.1
 dsh --profile strawberry --dump-config
 dsh --profile strawberry
@@ -36,7 +37,13 @@ dsh --profile strawberry
 dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.1.tgz
 ```
 
-将 `strawberry` 换为已有配置名称，可安装到自己的 DSH 配置。Web 使用者请使用已启用 Web 的配置。模型账号由 DSH 管理。
+第一条初始化命令仅用于尚未存在的配置。将 `strawberry` 换为已有 Web 配置名称时，跳过初始化。模型账号由 DSH 管理。
+
+如果先安装插件创建了配置，启动后没有界面，请在该 profile 的 `package.json` 中，将 `dsh.profile.bundles` 设置为以下顺序，保存后重新启动：
+
+```json
+["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-strawberry-data-hub"]
+```
 
 ## 使用示例
 
