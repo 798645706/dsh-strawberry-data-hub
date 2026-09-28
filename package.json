@@ -1,0 +1,49 @@
+{
+  "name": "dsh-strawberry-data-hub",
+  "version": "0.1.0-beta.1",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/798645706/dsh-strawberry-data-hub.git" },
+  "homepage": "https://github.com/798645706/dsh-strawberry-data-hub#readme",
+  "bugs": { "url": "https://github.com/798645706/dsh-strawberry-data-hub/issues" },
+  "description": "Assembly-aware strawberry research evidence tools for DeepSeek Harness",
+  "type": "module",
+  "main": "src/index.js",
+  "files": [
+    "src/",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek",
+    "strawberry",
+    "bioinformatics",
+    "fasta"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "smoke:live": "node scripts/smoke-live.js"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-system-prompt": "0.1.5-rc.3",
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
+  }
+}
