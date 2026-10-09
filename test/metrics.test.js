@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { metaboliteMetrics, referenceMetrics } from '../src/metrics.js';
+import { metaboliteMetrics, referenceMetrics, locusMetrics } from '../src/metrics.js';
 import { createClient } from '../src/client.js';
 
 test('metabolite counts distinguish source names, case, derivatives and missing names', () => {
@@ -35,4 +35,15 @@ test('derived metrics preserve raw results and source digests through client', a
     const out=await createClient({},async()=>Response.json({tool:name,status:'ok',result,provenance:{resultSha256:'unchanged'}}))(name,args);
     assert.deepEqual(out.result,result);assert.equal(out.provenance.resultSha256,'unchanged');assert.ok(out[key]);
   }
+});
+
+test('locus spans use half-open coordinates without changing source', () => {
+ const row={geneId:'g',interval:{start:24920,end:27233,coordinateSystem:'0-based-half-open'}};
+ const result={data:{candidates:[row]}};const original=JSON.stringify(result);
+ assert.equal(locusMetrics('genome_evidence_query',result,{operation:'locus'}).intervals[0].lengthBp,2313);
+ assert.equal(JSON.stringify(result),original);
+ for(const interval of [{start:1,end:1,coordinateSystem:'0-based-half-open'},{start:2,end:1,coordinateSystem:'0-based-half-open'},{start:1,end:2,coordinateSystem:'1-based'}]){
+ const m=locusMetrics('genome_evidence_query',{data:{candidates:[{interval}]}},{operation:'locus'});
+ assert.equal(m.intervals[0].lengthBp,interval.start===interval.end?0:null);
+ }
 });

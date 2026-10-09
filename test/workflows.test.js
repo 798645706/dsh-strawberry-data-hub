@@ -6,7 +6,7 @@ import { Context } from '@deepseek-ai/cordis';
 import ToolRuntime from '@deepseek-ai/dsh-tools';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import * as plugin from '../src/index.js';
-import { createWorkflows, createArtifactDownloads } from '../src/workflows.js';
+import { createWorkflows, createArtifactDownloads, plotDataPreview } from '../src/workflows.js';
 const grant='g'.repeat(43),csrf='c'.repeat(43),plot='plot-'+'a'.repeat(32),pred='pred-'+'b'.repeat(32);
 function proposal(kind='plot') {
   const confirmation={grant,csrf,expiresAt:kind==='plot'?Date.now()/1000+900:new Date(Date.now()+900000).toISOString(),state:'awaiting_confirmation'};
@@ -119,4 +119,13 @@ test('native DSH approved preparation and separate confirmation preserve draft a
     assert.equal(approvals[2].reason.includes(grant),false);assert.equal(approvals[2].reason.includes(csrf),false);
     const status=await run('sdh_task_status',{task_id:plot});assert.equal(status.isError,false);assert.equal(approvals.length,3);
   }finally{ctx.registry.delete(plugin);ctx.registry.delete(ToolRuntime);ctx.registry.delete(SystemPrompt);server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+
+test('verified plot JSON preview preserves exact data and bounds context',()=>{
+ const data={genes:['g'],samples:['s'],raw:[[0]],display:[[0]]};
+ const file={name:'plot-data.json',bytes:Buffer.from(JSON.stringify(data)),sha256:'verified'};
+ assert.deepEqual(plotDataPreview(file).data,data);
+ assert.equal(plotDataPreview({...file,bytes:Buffer.alloc(24001)}).status,'download_only');
+ assert.equal(plotDataPreview({...file,name:'figure.png'}),undefined);
+ assert.throws(()=>plotDataPreview({...file,bytes:Buffer.from('bad')}),/ARTIFACT_JSON/);
 });

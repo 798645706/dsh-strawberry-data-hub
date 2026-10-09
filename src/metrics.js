@@ -30,3 +30,15 @@ export function referenceMetrics(name, result, args) {
     meaning: 'Counts belong only to this catalogue and query. Use this reference list as the single list for genome-browser reference selection; retain exact IDs and labels. Other catalogues may describe the same assemblies: never add their row counts or call extra rows additional genomes. No cross-catalogue deduplication has been performed. primary is a primary assembly, not another haplotype; hap1/hap2 are separately labelled representations. Report returned rows separately from matchingTotal when paginated.',
   };
 }
+
+export function locusMetrics(name, result, args) {
+  if (name !== 'genome_evidence_query' || args.operation !== 'locus') return undefined;
+  const rows = result.data?.candidates;
+  if (!Array.isArray(rows)) return undefined;
+  return { intervals: rows.map(row => {
+    const i = row.interval ?? {};
+    const valid = i.coordinateSystem === '0-based-half-open' && Number.isSafeInteger(i.start) && Number.isSafeInteger(i.end) && i.start >= 0 && i.end >= i.start;
+    return { assemblyId: row.assemblyId, releaseId: row.releaseId, geneId: row.geneId, transcriptId: row.transcriptId, ...i,
+      lengthBp: valid ? i.end - i.start : null };
+  }), meaning: 'Program-computed interval length: end - start for 0-based-half-open. Copy lengthBp; never add one. null means unsupported or invalid coordinates. This is genomic span, not CDS, exon sum or protein length.' };
+}

@@ -5,7 +5,7 @@ import { exportFasta, renderResult } from './export.js';
 import { validateArguments } from './contracts.js';
 import { scientificGuidance } from './science.js';
 import { createEvidenceChecks, checkParameters, checkDescription } from './evidence-check.js';
-import { createWorkflows, createArtifactDownloads, artifactTypes } from './workflows.js';
+import { createWorkflows, createArtifactDownloads, artifactTypes, plotDataPreview } from './workflows.js';
 
 export const workflowNames = ['sdh_berryplot_prepare','sdh_berrylocus_prepare','sdh_task_confirm','sdh_task_status','sdh_prediction_result','sdh_plot_download'];
 
@@ -46,9 +46,9 @@ export function apply(ctx, config = {}) {
     {task_id:requiredText('Exact taskId returned by confirmation.')},(a,e)=>workflows.status(e.agent?.session,a.task_id,e.signal));
   registerWorkflow('sdh_prediction_result','Read a completed BerryLocus prediction from this session. Preserve model/reference identity and scientificValidation flags; LLR is model preference, not proven biological effect.',
     {task_id:requiredText('Exact completed prediction taskId.')},(a,e)=>workflows.result(e.agent?.session,a.task_id,e.signal));
-  registerWorkflow('sdh_plot_download','Fetch a completed BerryPlot artifact, verify its SHA-256 and provide an expiring local download link. Return a Markdown link using downloadUrl; no raw binary enters model context. Links last 15 minutes and require this DSH process.',
+  registerWorkflow('sdh_plot_download','Fetch a completed BerryPlot artifact, verify its SHA-256 and provide an expiring local download link. Return a Markdown link using downloadUrl; no raw binary enters model context. For plot-data.json up to 24 KB, preview.data contains verified JSON directly; use it without fetching the loopback URL. Links last 15 minutes and require this DSH process.',
     {task_id:requiredText('Exact plot taskId in this session.'),filename:{type:'string',required:true,enum:Object.keys(artifactTypes),description:'Requested output file.'}},
-    async(a,e)=>downloads.add(await workflows.artifact(e.agent?.session,a.task_id,a.filename,e.signal)));
+    async(a,e)=>{const file=await workflows.artifact(e.agent?.session,a.task_id,a.filename,e.signal);const preview=plotDataPreview(file);return {...await downloads.add(file),...(preview?{preview}:{})};});
   // Explicit opt-in for a dedicated research profile, not an implicit restriction
   // on unrelated tools in a user's general-purpose DSH installation.
   if (config.researchOnly === true) {

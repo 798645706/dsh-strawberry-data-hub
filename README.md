@@ -2,7 +2,7 @@
 
 将 Strawberry Data Hub 的草莓研究数据接入 DeepSeek Harness（DSH）。通过自然语言查询文献、解析基因、查看多组学上下文，并下载经过校验的 FASTA 序列。
 
-当前版本：`0.1.0-beta.4`。
+当前版本：**Beta 2**。公开版本按 Beta 1、Beta 2 展示；Beta 2 的 npm 安装包版本为 `0.1.0-beta.5`。安装时请使用下面的完整命令，旧的 `0.1.0-beta.2` 包不包含本版全部功能。
 
 代谢物按原始名称分组计数，并明确参考目录的计数范围，避免将重复目录条目相加。以上数量仅针对本次返回的数据，不代表完整数据库或独立化合物数量。
 
@@ -42,6 +42,8 @@
 
 BLAST 和 CRISPR 新任务提交请在网站使用。本版本支持 BerryPlot 和 BerryLocus 的准备、确认及结果获取；取消、改图、重启后恢复任务仍需后续接入。预测草稿验证不代表已提交或完成预测；引物特异性状态查询不代表已完成特异性分析。
 
+基因定位同时返回程序计算的半开区间长度，避免将基因组跨度与 CDS 长度混淆。`plot-data.json` 不超过24 KB时返回校验后的完整内容预览，较大文件仅提供下载。
+
 基因查询使用“基因 ID + 物种 + 组装版本”精确定位。序列导出直接使用服务端原始序列，校验序列长度、字符集、SHA-256及写入后的文件字节。新文件使用独立文件名。
 
 ## 安装
@@ -52,7 +54,7 @@ BLAST 和 CRISPR 新任务提交请在网站使用。本版本支持 BerryPlot �
 
 ```powershell
 dsh --profile strawberry --from-default-profile web --dump-config
-dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.4
+dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.5
 dsh --profile strawberry --dump-config
 dsh --profile strawberry
 ```
@@ -60,7 +62,7 @@ dsh --profile strawberry
 也可使用下载的发行包：
 
 ```powershell
-dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.4.tgz
+dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.5.tgz
 ```
 
 第一条初始化命令仅用于尚未存在的配置。将 `strawberry` 换为已有 Web 配置名称时，跳过初始化。模型账号由 DSH 管理。
@@ -161,3 +163,5 @@ npm pack
 插件代码采用 [MIT License](LICENSE)。数据及文献遵循各自来源的许可。
 
 使用问题与建议请提交至 [GitHub Issues](https://github.com/798645706/dsh-strawberry-data-hub/issues)。
+
+
