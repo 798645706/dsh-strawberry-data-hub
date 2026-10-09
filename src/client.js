@@ -4,7 +4,7 @@ import { literatureScope } from './science.js';
 import { metaboliteMetrics, referenceMetrics, locusMetrics } from './metrics.js';
 import { websiteLinks } from './links.js';
 
-export const VERSION = '0.1.0-beta.5';
+export const VERSION = '0.1.0-beta.6';
 export function checkSequences(result, args) {
   if (!Array.isArray(result.sequences)) throw new Error('SDH_PROTOCOL: Missing sequence list.');
   if (result.sequences.some(e => e.available) && !result.gene) throw new Error('SDH_PROTOCOL: Missing sequence gene key.');
@@ -44,6 +44,7 @@ export function createClient(config = {}, fetchImpl = fetch) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new Error('SDH_TIMEOUT: Request deadline exceeded.')), timeoutMs);
     const signal = callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal;
+    const downloadable = typeof config.deliverLargeResult === 'function' && (name === 'data_catalog' || name === 'metabolite_search' && args.operation === 'matrix');
     const url = new URL(`api/v1/ai/agent/tools/${name}`, base);
     try {
       const response = await fetchImpl(url, { method: 'POST', redirect: 'error', signal,
@@ -60,7 +61,7 @@ export function createClient(config = {}, fetchImpl = fetch) {
       const chunks = [];
       for await (const chunk of response.body) {
         size += chunk.length;
-        if (size > 1024 * 1024) throw new Error('SDH_RESPONSE_TOO_LARGE: Narrow the query or reduce limit.');
+        if (size > (downloadable ? 20 : 1) * 1024 * 1024) throw new Error('SDH_RESPONSE_TOO_LARGE: Narrow the query or reduce limit.');
         chunks.push(chunk);
       }
       signal.throwIfAborted();
@@ -109,6 +110,13 @@ export function createClient(config = {}, fetchImpl = fetch) {
           : 'nucleotideCount counts nucleotide symbols. stopSymbolCount counts only literal * characters, NOT stop codons. Zero * does not imply absence of a terminal stop codon; no translation or reading-frame analysis was performed.',
       }));
       // Reject whole oversize evidence instead of silently cutting a citation or sequence.
+      if (downloadable && JSON.stringify(output).length > 60000) {
+        const bytes = Buffer.concat(chunks);
+        const file = await config.deliverLargeResult({name:`sdh-${name}.json`,mime:'application/json',bytes,sha256:createHash('sha256').update(bytes).digest('hex')});
+        return {tool:name,executionStatus:data.status,businessStatus,pluginVersion:VERSION,source:url.href,retrievedAt:output.retrievedAt,
+          resultOmittedFromModel:true,file,provenance:data.provenance,
+          notice:'Complete original server JSON envelope is available in file.downloadUrl. No rows were silently truncated. File SHA-256 covers original envelope bytes; provenance.resultSha256 covers the original result only. The model has NOT read the omitted content; do not infer counts or values. Request a specific catalogue domain for inline data. Download requires this local DSH process and expires in 15 minutes.'};
+      }
       if (name !== 'sequence_fetch' && JSON.stringify(output).length > 60000) throw new Error('SDH_CONTEXT_TOO_LARGE: Narrow the query, reduce limit or request one sequence type. No partial result was delivered.');
       return output;
     } catch (error) {

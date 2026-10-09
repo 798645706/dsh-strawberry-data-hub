@@ -50,6 +50,9 @@ for (const tool of snapshot.tools) {
   contracts.push({ backend: tool.name, description: tool.description, parameters: dshParameters(tool.inputSchema) });
 }
 
+contracts.find(c=>c.backend==='metabolite_search').description += ' statistics requires study, feature_detail requires feature_id, matrix requires assay. For search hit counts use metaboliteMetrics; statistics is study-comparison data, not search counts.';
+contracts.find(c=>c.backend==='genome_evidence_query').description += ' Sequence requires explicit strand (+/-) as well as assembly, release, contig, start, end and coordinate_system. Large downloads are data files, not inline evidence.';
+
 export function validateArguments(name, input) {
   const contract = contracts.find(c => c.backend === name);
   if (!contract) throw new Error('SDH_UNKNOWN_TOOL: Tool is outside the plugin allowlist.');
@@ -59,5 +62,19 @@ export function validateArguments(name, input) {
   if (name === 'literature_search') result.limit ??= 3;
   if (name === 'sequence_fetch') result.type ??= 'both';
   if (name === 'data_catalog') { result.domain ??= 'genome'; result.limit ??= 5; result.summary_only ??= false; }
+  const operation = result.operation ?? (name === 'metabolite_search' ? 'search' : undefined);
+  const required = name === 'metabolite_search' ? ({feature_detail:['feature_id'],statistics:['study'],matrix:['assay']}[operation] ?? [])
+    : name === 'genome_evidence_query' ? ({
+      tracks:['assembly_id','release_id'],capabilities:['assembly_id','release_id'],locus:['assembly_id','release_id','gene_id'],
+      interval:['assembly_id','release_id','track_id','contig','start','end','coordinate_system'],
+      intervals:['assembly_id','release_id','track_ids','contig','start','end','coordinate_system'],
+      sequence:['assembly_id','release_id','contig','start','end','coordinate_system','strand'],
+      variants:['assembly_id','release_id','manifest_sha256','contig','start','end','coordinate_system','limit']
+    }[operation] ?? []) : [];
+  for (const key of required) if (result[key] === undefined) throw new Error(`SDH_INVALID_ARGUMENT: ${name} operation=${operation} requires ${key}. Select exact values from its catalogue; do not guess.`);
+  if (name === 'genome_evidence_query') {
+    if (result.start !== undefined && result.end !== undefined && (result.end <= result.start || result.end - result.start > 100000)) throw new Error('SDH_INVALID_ARGUMENT: Interval must satisfy 0 <= start < end and span <= 100000.');
+    if ((result.after_start !== undefined) !== (result.after_ordinal !== undefined)) throw new Error('SDH_INVALID_ARGUMENT: Both variant cursor fields are required.');
+  }
   return result;
 }

@@ -1,5 +1,7 @@
 // Guidance improves model behavior; it does not validate or approve final answers.
 export const scientificGuidance = `When using SDH evidence:
+- If resultOmittedFromModel is true, provide file.downloadUrl as a Markdown link. It contains the complete original JSON; never invent contents, counts or matrix values from a download-only result, and do not fetch a loopback URL with web tools. Use a narrower catalogue domain for inline details.
+- Metabolite statistics requires an exact study and refers to study comparisons, not search counts. Use metaboliteMetrics for query counts. Empty results mean no matching records in this scope; unavailable services cannot be replaced by invented output.
 - For SDH website queries and BerryPlot/BerryLocus requests, use registered sdh_ tools directly. Never search local plugin source, scan files, or invoke shell/grep to discover website datasets. BerryPlot prepare resolves the explicit dataset and gene request on the server; if it returns ambiguity, ask the user.
 - For locus interval lengths copy locusMetrics.intervals[].lengthBp. A 0-based-half-open interval [24920,27233) has length 2313 bp (end-start), not 2314. Do not label genomic span as CDS length.
 - For plot-data.json use sdh_plot_download preview.data to inspect actual genes, samples and values. Do not fetch the returned loopback URL with web tools. For download_only, report the preview size limit and provide the file link.

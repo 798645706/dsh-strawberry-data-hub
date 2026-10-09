@@ -82,7 +82,7 @@ test('rejects malformed lists, ranges and operation inputs before transport', as
   for (const [name, args] of invalid) await assert.rejects(call(name, args), /SDH_INVALID_ARGUMENT/, `${name}: ${JSON.stringify(args)}`);
   assert.equal(requests, 0);
   assert.deepEqual(validateArguments('batch_gene_annotation', { gene_ids: [' gene1 ', 'gene2'] }), { gene_ids: ['gene1', 'gene2'] });
-  assert.equal(validateArguments('genome_evidence_query', { operation: 'interval', start: 0 }).start, 0);
+  assert.equal(validateArguments('genome_evidence_query', { operation: 'interval', start: 0, end: 10, assembly_id:'a',release_id:'r',track_id:'t',contig:'c',coordinate_system:'0-based-half-open' }).start, 0);
   assert.equal(validateArguments('coexpression_query', { operation: 'query', cutoff: 0.5 }).cutoff, 0.5);
 });
 

@@ -13,11 +13,11 @@ export const name = 'strawberry-data-hub';
 export const inject = ['tools', 'systemPrompt'];
 export function apply(ctx, config = {}) {
   ctx.systemPrompt.section({ name: 'strawberry-data-hub:scientific-evidence', order: 4500, text: scientificGuidance });
-  const call = createClient(config);
+  const downloads = createArtifactDownloads();
+  const call = createClient({...config, deliverLargeResult:file=>downloads.add(file)});
   const evidenceChecks = createEvidenceChecks();
   const pending = new WeakMap();
   const workflows = createWorkflows(config);
-  const downloads = createArtifactDownloads();
   ctx.on('dispose', () => downloads.close());
   ctx.on('tools/pre-execute', async (exec, next) => {
     const decision = await next();
