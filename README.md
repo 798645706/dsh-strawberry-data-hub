@@ -2,7 +2,7 @@
 
 将 Strawberry Data Hub 的草莓研究数据接入 DeepSeek Harness（DSH）。通过自然语言查询文献、解析基因、查看多组学上下文，并下载经过校验的 FASTA 序列。
 
-首个公开测试版本：`0.1.0-beta.1`。
+当前版本：`0.1.0-beta.2`。
 
 ## 功能
 
@@ -15,6 +15,25 @@
 | `sdh_sequence_export` | 生成 FASTA 文件，提供附件及本机 Web 下载链接 |
 | `sdh_data_catalog` | 浏览基因组及其他数据资源目录 |
 | `sdh_evidence_check` | 核对结构化声明的证据 ID、DOI、原文摘录及数字字面匹配 |
+| `sdh_database_status` / `sdh_module_catalog` | 查询实时服务状态与模块目录 |
+| `sdh_batch_gene_annotation` | 批量功能注释，保留未解析和未注释的行 |
+| `sdh_pangenome_query` / `sdh_graph_variation_query` | 查询泛基因组及图变异证据 |
+| `sdh_single_cell_query` / `sdh_transcriptome_query` / `sdh_epigenome_query` | 查询单细胞、转录组和表观组数据 |
+| `sdh_sequence_analysis` | 序列工具箱、ORF、批量序列及引物设计；保留具体引擎与设置 |
+| `sdh_jbrowse_open` | 返回基因组浏览链接或待选择的参考版本 |
+| `sdh_family_search` / `sdh_tf_search` / `sdh_mirna_search` | 查询基因家族、转录因子和 miRNA |
+| `sdh_synteny_search` | 选择参考版本后查询共线性 |
+| `sdh_functional_enrichment` | 有明确物种及组装背景的 GO / KEGG 富集 |
+| `sdh_gwas_trait` / `sdh_gwas_study` | 查询特定性状或研究的 GWAS 证据 |
+| `sdh_metabolite_search` / `sdh_coexpression_query` | 查询代谢组特征及共表达结果 |
+| `sdh_download_search` | 查询来源文件的实际下载链接 |
+| `sdh_crispr_query` / `sdh_primer_specificity_status` | 查询 CRISPR 数据、已有任务状态及引物特异性服务可用性 |
+| `sdh_genome_evidence_query` | 查询参考组装、定位、区间、序列及变异证据 |
+| `sdh_genome_prediction_prepare` | 查询预测参考目录、验证一个显式 SNV 草稿 |
+
+共 31 项工具：29 项服务端接口、2 项本地工具。接口白名单根据 2026-10-09 线上契约固定，不会自动启用服务端后来增加的工具。目录显示的服务器能力可能多于插件可执行的能力。
+
+BLAST 和 CRISPR 新任务提交、网站预测确认按钮、BerryPlot 交互绘图流程请在网站使用。预测草稿验证不代表已提交或完成预测；引物特异性状态查询不代表已完成特异性分析。
 
 基因查询使用“基因 ID + 物种 + 组装版本”精确定位。序列导出直接使用服务端原始序列，校验序列长度、字符集、SHA-256及写入后的文件字节。新文件使用独立文件名。
 
@@ -26,7 +45,7 @@
 
 ```powershell
 dsh --profile strawberry --from-default-profile web --dump-config
-dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.1
+dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.2
 dsh --profile strawberry --dump-config
 dsh --profile strawberry
 ```
@@ -34,10 +53,12 @@ dsh --profile strawberry
 也可使用下载的发行包：
 
 ```powershell
-dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.1.tgz
+dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.2.tgz
 ```
 
 第一条初始化命令仅用于尚未存在的配置。将 `strawberry` 换为已有 Web 配置名称时，跳过初始化。模型账号由 DSH 管理。
+
+已有插件配置升级时，安装新的发行包并重启 DSH；无需重建 profile。仅更新 GitHub 源码不会更新已安装的 npm 包。
 
 如果先安装插件创建了配置，启动后没有界面，请在该 profile 的 `package.json` 中，将 `dsh.profile.bundles` 设置为以下顺序，保存后重新启动：
 
@@ -59,6 +80,14 @@ dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.1.tgz
 
 > 对文献中的定量结果做结构化证据检查，列出数值、单位、材料、具体对照和来源。
 
+> miRNA 和共线性分析目前有哪些参考版本？先列出选项。
+
+> 在代谢组中查询 sucrose，区分来源名称为 Sucrose 的特征和相关衍生物。
+
+> 打开红颜基因组看看；如果存在多个组装版本，先让我选择。
+
+> 给 FvesChr6G00057790.1 和 FvesChr2G00181140.1 做注释表，物种 Fragaria vesca，组装 v6.0(Horticulture Research. 2023)。
+
 ## 配置
 
 默认服务地址为 [Strawberry Data Hub](https://sci.hainanu.edu.cn/strawberry/)。默认请求超时45秒，无需向插件传入网站模型密钥。
@@ -73,13 +102,15 @@ dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.1.tgz
     researchOnly: true
 ```
 
-`researchOnly` 为可选设置，默认关闭。开启后，该配置仅允许七项 SDH 工具及 `ask_user_question`，适合草莓研究专用环境。
+`researchOnly` 为可选设置，默认关闭。开启后，该配置仅允许上述 31 项 SDH 工具及 `ask_user_question`，适合草莓研究专用环境。
 
 `timeoutMs` 范围为100–120000毫秒。服务地址由本地配置决定。遇到限流时，请稍后重新请求。
 
 ## 数据与结果说明
 
 - 文献结果保留来源、研究条件和检索范围；记录数表示本次返回的数据。
+- 文献的人工整理证据、全文、发现摘要和扩展全文分别保留；摘要不能当作已阅读的全文。
+- 各模块的组装与发布标识可能不同，请从对应目录选择。基因组区间使用 0-based half-open；SNV 草稿位置和 CRISPR 区间使用 1-based。不能直接混用坐标或发布版本。
 - 证据检查核对来源标识、原文摘录及数值字面一致性。检索快照仅供同一会话使用，保留最近8次检索，30分钟有效。
 - 蛋白字符数包含 `*`；氨基酸残基数不包含 `*`。CDS长度按核苷酸字符计数。
 - 序列 SHA-256 对应原始序列字符；文件 SHA-256 对应完整 FASTA 字节。
@@ -91,10 +122,13 @@ dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.1.tgz
 npm ci --ignore-scripts
 npm test
 npm run smoke:live
+node scripts/regression-beta2-live.js
 npm pack
 ```
 
 `npm test` 运行离线测试；`smoke:live` 顺序查询真实服务，需要网络，不调用生成模型。
+
+`regression-beta2-live.js` 检查线上契约，并对每个已接入服务端工具运行真实请求；请求间隔 6 秒，遇到限流停止。可在命令后传入案例 ID 只复测指定案例；结果保存到独立的 `artifacts/beta2-live-*` 目录。它不提交计算任务，也不调用生成模型。
 
 已覆盖工具注册、输入校验、精确组装匹配、序列及文件校验、取消与超时、证据快照隔离等测试。版本更新见 [CHANGELOG.md](CHANGELOG.md)。
 

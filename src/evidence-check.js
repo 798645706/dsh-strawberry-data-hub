@@ -37,7 +37,7 @@ export function createEvidenceChecks({ now = Date.now } = {}) {
     if (!snapshots) sessions.set(session, snapshots = new Map());
     for (const [id, saved] of snapshots) if (now() - saved.createdAt >= 30 * 60 * 1000) snapshots.delete(id);
     const id = randomUUID();
-    const nodes = ['evidence', 'fulltext'].flatMap(tier => (Array.isArray(value.result[tier]) ? value.result[tier] : [])
+    const nodes = ['evidence', 'fulltext', 'discovery', 'discoveryFulltext'].flatMap(tier => (Array.isArray(value.result[tier]) ? value.result[tier] : [])
       .map(entry => entry?.node).filter(n => n && typeof n === 'object'));
     snapshots.set(id, { createdAt: now(), nodes: structuredClone(nodes) });
     while (snapshots.size > 8) snapshots.delete(snapshots.keys().next().value);

@@ -1,0 +1,327 @@
+[
+  {
+    "name": "database_status",
+    "examples": [
+      {}
+    ]
+  },
+  {
+    "name": "literature_search",
+    "examples": [
+      {
+        "limit": 5,
+        "question": "Which genes regulate strawberry anthocyanin accumulation?"
+      }
+    ]
+  },
+  {
+    "name": "gene_resolve",
+    "examples": [
+      {
+        "version": "v6.0(Horticulture Research. 2023)",
+        "species": "Fragaria vesca",
+        "gene_id": "FvesChr6G00057790.1"
+      }
+    ]
+  },
+  {
+    "name": "gene_context",
+    "examples": [
+      {
+        "version": "v6.0(Horticulture Research. 2023)",
+        "species": "Fragaria vesca",
+        "gene_id": "FvesChr6G00057790.1"
+      }
+    ]
+  },
+  {
+    "name": "sequence_fetch",
+    "examples": [
+      {
+        "type": "protein",
+        "version": "v6.0(Horticulture Research. 2023)",
+        "gene_id": "FvesChr6G00057790.1",
+        "species": "Fragaria vesca"
+      }
+    ]
+  },
+  {
+    "name": "batch_gene_annotation",
+    "examples": [
+      {
+        "gene_ids": [
+          "FvesChr6G00057790.1",
+          "FvesChr2G00181140.1"
+        ],
+        "species": "Fragaria vesca",
+        "version": "v6.0(Horticulture Research. 2023)"
+      }
+    ]
+  },
+  {
+    "name": "blast_search",
+    "examples": [
+      {
+        "version": "v6.0(Horticulture Research. 2023)",
+        "species": "Fragaria vesca",
+        "gene_id": "FvesChr1G00279070.1",
+        "program": "blastp"
+      }
+    ]
+  },
+  {
+    "name": "module_catalog",
+    "examples": [
+      {}
+    ]
+  },
+  {
+    "name": "data_catalog",
+    "examples": [
+      {
+        "summary_only": true,
+        "domain": "genome",
+        "limit": 1
+      },
+      {
+        "query": "Camarosa v1.0.a2",
+        "domain": "genome",
+        "limit": 5
+      },
+      {
+        "domain": "all",
+        "limit": 5
+      }
+    ]
+  },
+  {
+    "name": "pangenome_query",
+    "examples": [
+      {
+        "operation": "status"
+      },
+      {
+        "query": "OG0000001",
+        "limit": 10,
+        "operation": "gene_search"
+      },
+      {
+        "pan_gene_id": "SDHDOF255V1_OG0000001",
+        "operation": "gene_detail"
+      }
+    ]
+  },
+  {
+    "name": "graph_variation_query",
+    "examples": [
+      {
+        "operation": "status"
+      },
+      {
+        "start": 1000001,
+        "sequence": "Fvb1",
+        "operation": "region",
+        "length": 20000
+      }
+    ]
+  },
+  {
+    "name": "single_cell_query",
+    "examples": [
+      {
+        "dataset": "CRA004848",
+        "operation": "catalog"
+      },
+      {
+        "gene": "FvH4_1g00010",
+        "dataset": "CRA004848",
+        "operation": "gene"
+      }
+    ]
+  },
+  {
+    "name": "transcriptome_query",
+    "examples": [
+      {
+        "operation": "catalog"
+      },
+      {
+        "gene": "FvH4_1g00010",
+        "dataset": "fragaria-vesca-strawberry-atlas-2026",
+        "operation": "gene"
+      }
+    ]
+  },
+  {
+    "name": "epigenome_query",
+    "examples": [
+      {
+        "operation": "catalog"
+      },
+      {
+        "project": "PRJNA997764",
+        "operation": "project"
+      }
+    ]
+  },
+  {
+    "name": "sequence_analysis",
+    "examples": [
+      {
+        "operation": "status"
+      },
+      {
+        "sequence_type": "dna",
+        "sequence": "ATGGCC",
+        "operation": "toolkit"
+      }
+    ]
+  },
+  {
+    "name": "jbrowse_open",
+    "examples": [
+      {
+        "version": "v6.0(Horticulture Research. 2023)",
+        "species": "Fragaria vesca",
+        "gene_id": "FvesChr6G00057790.1"
+      }
+    ]
+  },
+  {
+    "name": "family_search",
+    "examples": [
+      {
+        "species": "Fragaria vesca",
+        "family": "zf-C3HC4_2"
+      }
+    ]
+  },
+  {
+    "name": "tf_search",
+    "examples": [
+      {
+        "family": "MYB",
+        "type": "TF",
+        "species": "Fragaria vesca"
+      }
+    ]
+  },
+  {
+    "name": "mirna_search",
+    "examples": [
+      {
+        "family": "miR156",
+        "assembly": "fragaria-vesca"
+      }
+    ]
+  },
+  {
+    "name": "synteny_search",
+    "examples": [
+      {
+        "source_assembly": "fves_v6",
+        "flank": 5,
+        "gene_id": "FvesChr1G00308720",
+        "target_assembly": "fxa_camarosa"
+      }
+    ]
+  },
+  {
+    "name": "functional_enrichment",
+    "examples": [
+      {
+        "version": "v6.0(Horticulture Research. 2023)",
+        "gene_ids": [
+          "FvesChr6G00057790.1",
+          "FvesChr3G00123750.1"
+        ],
+        "species": "Fragaria vesca",
+        "analysis": "go"
+      }
+    ]
+  },
+  {
+    "name": "gwas_trait",
+    "examples": [
+      {
+        "trait": "fruit-size"
+      }
+    ]
+  },
+  {
+    "name": "metabolite_search",
+    "examples": [
+      {
+        "query": "anthocyanin"
+      }
+    ]
+  },
+  {
+    "name": "download_search",
+    "examples": [
+      {
+        "query": "Fragaria vesca"
+      }
+    ]
+  },
+  {
+    "name": "coexpression_query",
+    "examples": [
+      {
+        "operation": "catalog"
+      }
+    ]
+  },
+  {
+    "name": "gwas_study",
+    "examples": [
+      {
+        "operation": "catalog"
+      }
+    ]
+  },
+  {
+    "name": "crispr_query",
+    "examples": [
+      {
+        "operation": "status"
+      }
+    ]
+  },
+  {
+    "name": "crispr_submit",
+    "examples": [
+      {
+        "assembly_id": "vesca-v6",
+        "max_mismatches": 2,
+        "sequence": "ACGTACGTACGTACGTACGTAGG"
+      }
+    ]
+  },
+  {
+    "name": "primer_specificity_status",
+    "examples": [
+      {}
+    ]
+  },
+  {
+    "name": "genome_evidence_query",
+    "examples": [
+      {
+        "operation": "datasets"
+      },
+      {
+        "limit": 5,
+        "operation": "assemblies"
+      }
+    ]
+  },
+  {
+    "name": "genome_prediction_prepare",
+    "examples": [
+      {
+        "operation": "catalog"
+      }
+    ]
+  }
+]

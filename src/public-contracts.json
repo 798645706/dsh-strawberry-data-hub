@@ -1,0 +1,1451 @@
+{
+  "source": "https://sci.hainanu.edu.cn/strawberry/api/v1/ai/agent/tools",
+  "checkedOn": "2026-10-09",
+  "tools": [
+    {
+      "name": "database_status",
+      "description": "Report availability of the read-only strawberry data tools.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "literature_search",
+      "description": "Retrieve curated evidence, licensed full text and verified plant-scoped strawberry abstracts with hybrid BM25 and semantic search.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "maxLength": 500,
+            "type": "string",
+            "minLength": 1,
+            "description": "Strawberry research question"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 8,
+            "minimum": 1,
+            "description": "Maximum ranked sources"
+          }
+        },
+        "required": [
+          "question"
+        ]
+      }
+    },
+    {
+      "name": "gene_resolve",
+      "description": "Resolve a gene identifier to exact species and assembly candidates.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact SDH gene identifier"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact species constraint"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact assembly constraint"
+          }
+        },
+        "required": [
+          "gene_id"
+        ]
+      }
+    },
+    {
+      "name": "gene_context",
+      "description": "Return assembly-scoped annotation, expression, epigenome, GWAS and metabolite evidence.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact SDH gene identifier"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact species name"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assembly version"
+          }
+        },
+        "required": [
+          "gene_id",
+          "species",
+          "version"
+        ]
+      }
+    },
+    {
+      "name": "sequence_fetch",
+      "description": "Fetch exact assembly-scoped protein and/or CDS sequence from the local SDH database.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact SDH gene identifier"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact species name"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assembly version"
+          },
+          "type": {
+            "description": "Sequence type",
+            "type": "string",
+            "enum": [
+              "protein",
+              "cds",
+              "both"
+            ]
+          }
+        },
+        "required": [
+          "gene_id",
+          "species",
+          "version"
+        ]
+      }
+    },
+    {
+      "name": "batch_gene_annotation",
+      "description": "Annotate and compare multiple exact assembly-aware SDH genes: functional terms, expression, epigenome, GWAS and metabolic evidence with provenance and comparability checks.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gene_ids": {
+            "maxItems": 50,
+            "items": {
+              "maxLength": 128,
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "minLength": 1
+            },
+            "description": "Distinct exact SDH gene identifiers",
+            "uniqueItems": true,
+            "minItems": 1,
+            "type": "array"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact species constraint"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact assembly constraint"
+          }
+        },
+        "required": [
+          "gene_ids"
+        ]
+      }
+    },
+    {
+      "name": "module_catalog",
+      "description": "Report Agent-accessible SDH modules.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "data_catalog",
+      "description": "Inspect real SDH genome, transcriptome, epigenome, single-cell, metabolomics, GWAS, pangenome, functional-annotation, regulatory and downloadable-data inventories. Genome results distinguish strawberry hosts, strawberry pathogens and unclassified records, and expose stable assembly metadata plus verified module capabilities when available.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "description": "Internal data domain",
+            "type": "string",
+            "enum": [
+              "all",
+              "genome",
+              "transcriptome",
+              "epigenome",
+              "single_cell",
+              "metabolomics",
+              "gwas",
+              "pangenome",
+              "functional_annotation",
+              "regulatory",
+              "downloads",
+              "coexpression",
+              "crispr"
+            ]
+          },
+          "query": {
+            "maxLength": 500,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional cultivar, species, assembly or dataset text"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 20,
+            "minimum": 1,
+            "description": "Maximum entries or sample genes per domain"
+          },
+          "summary_only": {
+            "description": "Return aggregate genome counts without assembly rows",
+            "type": "boolean"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "pangenome_query",
+      "description": "Query the published SDH diploid Fragaria orthogroup catalogue, occupancy, composition, matrix and pan-gene members.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Pangenome operation",
+            "type": "string",
+            "enum": [
+              "status",
+              "assemblies",
+              "composition",
+              "occupancy",
+              "addition_profile",
+              "matrix",
+              "gene_search",
+              "gene_detail"
+            ]
+          },
+          "query": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional pan-gene, Orthogroup or protein search"
+          },
+          "pan_gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact SDH pan-gene identifier"
+          },
+          "assignment": {
+            "description": "Assignment filter",
+            "type": "string",
+            "enum": [
+              "all",
+              "grouped",
+              "unassigned_singleton"
+            ]
+          },
+          "occupancy": {
+            "type": "integer",
+            "maximum": 7,
+            "minimum": 1,
+            "description": "Proteome occupancy"
+          },
+          "assembly": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact pangenome assembly ID"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 20,
+            "minimum": 1,
+            "description": "Maximum rows"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "graph_variation_query",
+      "description": "Query bounded pangenome graph alignments and validated Fvb1 SV/PAV site evidence.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Graph evidence operation",
+            "type": "string",
+            "enum": [
+              "status",
+              "region",
+              "sites",
+              "site_detail"
+            ]
+          },
+          "sequence": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Reference sequence such as Fvb1"
+          },
+          "start": {
+            "description": "1-based region start",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "maximum": 20000,
+            "minimum": 1,
+            "description": "Region length"
+          },
+          "query": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional site, gene or sample search"
+          },
+          "stable_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact graph-site stable identifier"
+          },
+          "evidence": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Evidence status filter"
+          },
+          "annotation": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Annotation overlap filter"
+          },
+          "te_context": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "TE-context filter"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 20,
+            "minimum": 1,
+            "description": "Maximum sites"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "single_cell_query",
+      "description": "Query the SDH single-cell catalogue, markers, differential expression, gene profiles, GO results and defense evidence.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Single-cell operation",
+            "type": "string",
+            "enum": [
+              "catalog",
+              "markers",
+              "differential_expression",
+              "gene",
+              "go",
+              "defense"
+            ]
+          },
+          "dataset": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Dataset accession"
+          },
+          "analysis": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Analysis version"
+          },
+          "sample": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Sample identifier"
+          },
+          "contrast": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Contrast identifier"
+          },
+          "cell_type": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Cell type identifier or label"
+          },
+          "gene": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact gene identifier"
+          },
+          "passes_threshold": {
+            "description": "Require the published DE threshold",
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 50,
+            "minimum": 1,
+            "description": "Maximum rows"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "transcriptome_query",
+      "description": "Query SDH transcriptome datasets and compare bounded assembly-specific gene expression profiles.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Transcriptome operation",
+            "type": "string",
+            "enum": [
+              "catalog",
+              "gene",
+              "compare"
+            ]
+          },
+          "dataset": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact transcriptome dataset slug"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact species; must match the selected dataset"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assembly version; must match the selected dataset"
+          },
+          "gene": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact dataset gene identifier"
+          },
+          "gene_ids": {
+            "maxItems": 20,
+            "items": {
+              "maxLength": 128,
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "minLength": 1
+            },
+            "description": "Genes to compare",
+            "uniqueItems": true,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "epigenome_query",
+      "description": "Query SDH epigenomics projects, chromatin-state models, genes and genomic regions.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Epigenome operation",
+            "type": "string",
+            "enum": [
+              "catalog",
+              "project",
+              "state_model",
+              "examples",
+              "gene",
+              "region"
+            ]
+          },
+          "project": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Project accession"
+          },
+          "category": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Assay category"
+          },
+          "gene": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact gene identifier"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact species"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assembly version"
+          },
+          "chromosome": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Chromosome"
+          },
+          "start": {
+            "description": "1-based region start",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "end": {
+            "description": "1-based region end",
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "sequence_analysis",
+      "description": "Run bounded SDH batch sequence retrieval, Primer3 design, ORF finding or deterministic sequence analysis.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Sequence operation",
+            "type": "string",
+            "enum": [
+              "status",
+              "batch_fetch",
+              "primer_design",
+              "orf_find",
+              "toolkit"
+            ]
+          },
+          "gene_ids": {
+            "maxItems": 100,
+            "items": {
+              "maxLength": 128,
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "minLength": 1
+            },
+            "description": "Exact gene identifiers for batch retrieval",
+            "uniqueItems": true,
+            "minItems": 1,
+            "type": "array"
+          },
+          "gene": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact gene identifier for primer design"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact species"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assembly version"
+          },
+          "sequence": {
+            "maxLength": 50000,
+            "type": "string",
+            "minLength": 1,
+            "description": "Nucleotide/protein sequence"
+          },
+          "sequence_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Sequence label"
+          },
+          "type": {
+            "description": "Batch sequence type",
+            "type": "string",
+            "enum": [
+              "protein",
+              "cds",
+              "both"
+            ]
+          },
+          "assay_type": {
+            "description": "Primer assay type",
+            "type": "string",
+            "enum": [
+              "qpcr",
+              "pcr"
+            ]
+          },
+          "sequence_type": {
+            "description": "Sequence type",
+            "type": "string",
+            "enum": [
+              "auto",
+              "dna",
+              "rna",
+              "protein"
+            ]
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "jbrowse_open",
+      "description": "Prepare a navigation-only JBrowse link for a catalogued assembly and locus.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact species name"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact assembly version"
+          },
+          "assembly": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact JBrowse assembly name"
+          },
+          "location": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional ref:start-end location"
+          },
+          "gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact gene identifier for assembly selection"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "family_search",
+      "description": "Find genes assigned to an exact gene-family name.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact gene-family name"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional species filter"
+          }
+        },
+        "required": [
+          "family"
+        ]
+      }
+    },
+    {
+      "name": "tf_search",
+      "description": "Find transcription factors or regulators by family and species.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact TF/TR family"
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional species filter"
+          },
+          "type": {
+            "description": "Regulator class",
+            "type": "string",
+            "enum": [
+              "TF",
+              "TR",
+              "ALL"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "mirna_search",
+      "description": "Find predicted miRNA loci in a whitelisted assembly.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assembly": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Whitelisted assembly slug"
+          },
+          "family": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact miRNA family"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "synteny_search",
+      "description": "Return pairwise syntenic context for a gene in a published Fragaria assembly.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gene_id": {
+            "maxLength": 191,
+            "type": "string",
+            "minLength": 1,
+            "description": "Gene identifier in the input assembly"
+          },
+          "source_assembly": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Published input assembly ID"
+          },
+          "target_assembly": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Published target assembly ID"
+          },
+          "flank": {
+            "type": "integer",
+            "maximum": 10,
+            "minimum": 0,
+            "description": "Neighbouring genes on each side"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "functional_enrichment",
+      "description": "Run GO or KEGG over-representation analysis.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "analysis": {
+            "description": "Enrichment namespace",
+            "type": "string",
+            "enum": [
+              "go",
+              "kegg"
+            ]
+          },
+          "species": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact species name"
+          },
+          "version": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assembly version"
+          },
+          "gene_ids": {
+            "maxItems": 100,
+            "items": {
+              "maxLength": 128,
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "minLength": 1
+            },
+            "description": "Input gene set",
+            "uniqueItems": true,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "analysis",
+          "species",
+          "version",
+          "gene_ids"
+        ]
+      }
+    },
+    {
+      "name": "gwas_trait",
+      "description": "Retrieve a published GWAS trait summary or exact marker detail.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "trait": {
+            "description": "Supported published trait",
+            "type": "string",
+            "enum": [
+              "yield",
+              "fruit-size"
+            ]
+          },
+          "marker_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact marker identifier"
+          }
+        },
+        "required": [
+          "trait"
+        ]
+      }
+    },
+    {
+      "name": "metabolite_search",
+      "description": "Query the metabolomics catalogue, features, details, statistics or abundance matrix.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Metabolomics operation",
+            "type": "string",
+            "enum": [
+              "search",
+              "catalog",
+              "feature_detail",
+              "statistics",
+              "matrix"
+            ]
+          },
+          "query": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional metabolite name or identifier"
+          },
+          "mz": {
+            "description": "Optional mass-to-charge value",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "tolerance": {
+            "description": "Optional positive m/z tolerance",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "feature_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact metabolite feature identifier"
+          },
+          "study": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact study identifier"
+          },
+          "factor": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional study factor"
+          },
+          "assay": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact assay identifier"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "download_search",
+      "description": "Search the read-only SDH download catalog.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "maxLength": 255,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional species, assembly or filename text"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "coexpression_query",
+      "description": "Query an exact assembly-scoped Pearson co-expression neighborhood; not WGCNA or causal regulation.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Operation",
+            "type": "string",
+            "enum": [
+              "catalog",
+              "query",
+              "network"
+            ]
+          },
+          "question": {
+            "maxLength": 4000,
+            "type": "string",
+            "minLength": 1,
+            "description": "Original question for conservative catalogue selection"
+          },
+          "dataset": {
+            "maxLength": 160,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact installed dataset slug"
+          },
+          "gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact dataset-specific gene"
+          },
+          "mode": {
+            "description": "Correlation mode",
+            "type": "string",
+            "enum": [
+              "overall",
+              "within_group"
+            ]
+          },
+          "direction": {
+            "description": "Correlation direction",
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "both"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 50,
+            "minimum": 5,
+            "description": "Partners"
+          },
+          "cutoff": {
+            "maximum": 1,
+            "minimum": 0.5,
+            "type": "number"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "gwas_study",
+      "description": "Additional published GWAS studies: catalogue, exact study/analysis summary or marker; preserve population, model, missing statistics and coordinate provenance.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Operation",
+            "type": "string",
+            "enum": [
+              "catalog",
+              "query",
+              "summary",
+              "marker"
+            ]
+          },
+          "question": {
+            "maxLength": 4000,
+            "type": "string",
+            "minLength": 1,
+            "description": "Original question with exact catalogue slugs"
+          },
+          "study": {
+            "maxLength": 96,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact published study slug"
+          },
+          "analysis": {
+            "maxLength": 96,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact analysis/model/population slug"
+          },
+          "marker_id": {
+            "maxLength": 40,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact marker ID"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "crispr_query",
+      "description": "Inspect CRISPR availability, assembly-specific gene/sequence or an existing asynchronous job. Does not submit a job.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Read-only operation",
+            "type": "string",
+            "enum": [
+              "status",
+              "gene",
+              "sequence",
+              "job"
+            ]
+          },
+          "assembly_id": {
+            "maxLength": 60,
+            "type": "string",
+            "minLength": 1,
+            "description": "Indexed CRISPR assembly ID"
+          },
+          "gene_id": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact gene/explicit alias"
+          },
+          "contig": {
+            "maxLength": 128,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact reference contig"
+          },
+          "start": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "1-based inclusive start"
+          },
+          "end": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "1-based inclusive end"
+          },
+          "job_id": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Previously returned job ID"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "primer_specificity_status",
+      "description": "Report current primer-specificity availability, without claiming a specificity check was performed.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "genome_evidence_query",
+      "description": "Discover exact genome/track/variant releases, locate genes, summarize experimental intervals or read original variant sites. Never reuse identities across release types. prediction_methods checks historical DNA prediction cache availability; it never starts computation.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "assemblies=GENE ANNOTATION releases; datasets=EXPERIMENTAL TRACK releases; variant_datasets=VARIANT releases. prediction_methods checks historical DNA cache availability and returns identities only if readable. When enabled, predictions only reads existing results, never runs a model. Do not exchange identities between catalogues or replace unavailable cached results with a new prediction.",
+            "type": "string",
+            "enum": [
+              "datasets",
+              "assemblies",
+              "capabilities",
+              "tracks",
+              "locus",
+              "interval",
+              "intervals",
+              "sequence",
+              "variant_datasets",
+              "variants",
+              "prediction_methods"
+            ]
+          },
+          "query": {
+            "maxLength": 120,
+            "type": "string",
+            "minLength": 1,
+            "description": "Discovery only: literal words matched against public identity/label fields across the FULL catalogue before paging; not a natural-language question"
+          },
+          "filter_assembly_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Discovery only: exact assembly identity filter; never a cross-assembly mapping"
+          },
+          "filter_release_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Discovery only: exact release filter for this catalogue type"
+          },
+          "track_ids": {
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "maxLength": 200,
+              "type": "string",
+              "minLength": 1,
+              "description": "Exact selected track ID"
+            },
+            "maxItems": 16
+          },
+          "reference_sha256": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional pinned FAI SHA-256 for track interval queries"
+          },
+          "strand": {
+            "description": "Sequence strand",
+            "type": "string",
+            "enum": [
+              "+",
+              "-"
+            ]
+          },
+          "assembly_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact sdh-asm identifier from discovery"
+          },
+          "release_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact release for this operation; coordinate and track releases differ"
+          },
+          "gene_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact biological ID for locus operation"
+          },
+          "transcript_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional exact transcript for locus operation"
+          },
+          "track_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact public track ID for interval operation"
+          },
+          "contig": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact track reference name"
+          },
+          "start": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "description": "0-based start, interval operation"
+          },
+          "end": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "Exclusive end; span at most 100000 bp"
+          },
+          "coordinate_system": {
+            "description": "Explicit coordinate convention",
+            "type": "string",
+            "enum": [
+              "0-based-half-open"
+            ]
+          },
+          "manifest_sha256": {
+            "maxLength": 64,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact variant manifest SHA-256 from variant_datasets"
+          },
+          "method_id": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Predictions only: exact methodId returned by prediction_methods"
+          },
+          "after_start": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 0,
+            "description": "Variant cursor afterStart; both cursor fields required"
+          },
+          "after_ordinal": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "Variant cursor afterOrdinal"
+          },
+          "offset": {
+            "type": "integer",
+            "maximum": 1023,
+            "minimum": 0,
+            "description": "Discovery page offset"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 10,
+            "minimum": 1,
+            "description": "Discovery or variant page size"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "genome_prediction_prepare",
+      "description": "Read the prediction catalogue or validate one explicit SNV draft against the reference. Never creates tasks or runs models; user confirmation is required.",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "description": "Read catalogue or validate only",
+            "type": "string",
+            "enum": [
+              "catalog",
+              "prepare"
+            ]
+          },
+          "query": {
+            "maxLength": 100,
+            "type": "string",
+            "minLength": 1,
+            "description": "catalog only: cultivar/species/assembly words to search ALL enabled nuclear references; not the whole question"
+          },
+          "assemblyId": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact prediction catalogue assembly"
+          },
+          "releaseId": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact release"
+          },
+          "methodId": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact catalogue method"
+          },
+          "contig": {
+            "maxLength": 200,
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact contig"
+          },
+          "position": {
+            "type": "integer",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "description": "Explicit 1-based SNV position"
+          },
+          "coordinateSystem": {
+            "description": "Coordinate convention",
+            "type": "string",
+            "enum": [
+              "1-based"
+            ]
+          },
+          "ref": {
+            "description": "Requested REF",
+            "type": "string",
+            "enum": [
+              "A",
+              "C",
+              "G",
+              "T"
+            ]
+          },
+          "alt": {
+            "description": "Requested ALT",
+            "type": "string",
+            "enum": [
+              "A",
+              "C",
+              "G",
+              "T"
+            ]
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      }
+    }
+  ]
+}

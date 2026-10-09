@@ -1,3 +1,6 @@
+import snapshot from './public-contracts.json' with { type: 'json' };
+import { validateSchema, dshParameters } from './schema.js';
+
 const text = (description, required = false) => ({
   type: 'string', description, ...(required ? { required: true } : {}),
 });
@@ -41,32 +44,18 @@ export const contracts = [
   },
 ];
 
+// Frozen allowlist: API schema updates require review and a new plugin release.
+for (const tool of snapshot.tools) {
+  if (contracts.some(c => c.backend === tool.name)) continue;
+  contracts.push({ backend: tool.name, description: tool.description, parameters: dshParameters(tool.inputSchema) });
+}
+
 export function validateArguments(name, input) {
   const contract = contracts.find(c => c.backend === name);
   if (!contract) throw new Error('SDH_UNKNOWN_TOOL: Tool is outside the plugin allowlist.');
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('SDH_INVALID_ARGUMENT: Expected an object.');
-  const result = {};
-  for (const key of Object.keys(input)) {
-    if (!Object.hasOwn(contract.parameters, key)) throw new Error(`SDH_INVALID_ARGUMENT: Unknown parameter ${key}.`);
-  }
-  for (const [key, spec] of Object.entries(contract.parameters)) {
-    const value = input[key];
-    if (value === undefined && !spec.required) continue;
-    if (spec.type === 'integer') {
-      const max = name === 'literature_search' ? 8 : 20;
-      if (!Number.isInteger(value) || value < 1 || value > max) throw new Error(`SDH_INVALID_ARGUMENT: ${key} must be an integer from 1 to ${max}.`);
-    } else if (typeof value !== spec.type) {
-      throw new Error(`SDH_INVALID_ARGUMENT: ${key} must be ${spec.type}.`);
-    }
-    const clean = typeof value === 'string' ? value.trim() : value;
-    if (typeof clean === 'string') {
-      const maximum = ({ gene_id: 128, species: 160, version: 255, question: 500, query: 500 })[key] ?? 32;
-      if (!clean.length || clean.length > maximum) throw new Error(`SDH_INVALID_ARGUMENT: ${key} must contain 1–${maximum} characters.`);
-      if (key === 'gene_id' && !/^[A-Za-z0-9._:-]+$/.test(clean)) throw new Error('SDH_INVALID_ARGUMENT: Unsupported gene identifier characters.');
-    }
-    if (spec.enum && !spec.enum.includes(clean)) throw new Error(`SDH_INVALID_ARGUMENT: Unsupported ${key}.`);
-    result[key] = clean;
-  }
+  const schema = snapshot.tools.find(t => t.name === name).inputSchema;
+  const result = validateSchema(schema, input);
   if (name === 'literature_search') result.limit ??= 3;
   if (name === 'sequence_fetch') result.type ??= 'both';
   if (name === 'data_catalog') { result.domain ??= 'genome'; result.limit ??= 5; result.summary_only ??= false; }

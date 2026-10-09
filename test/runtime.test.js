@@ -6,7 +6,7 @@ import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import * as plugin from '../src/index.js';
 
-test('registers seven tools in real Cordis/DSH runtime and executes through its pipeline', { timeout: 10000 }, async () => {
+test('registers 31 tools in real Cordis/DSH runtime and executes through its pipeline', { timeout: 10000 }, async () => {
   const server = createServer((req, res) => {
     assert.equal(req.url, '/strawberry/api/v1/ai/agent/tools/gene_resolve');
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -29,7 +29,7 @@ test('registers seven tools in real Cordis/DSH runtime and executes through its 
     assert.equal(denied.isError, true);
     assert.match(JSON.stringify(denied.content), /SDH_RESEARCH_ONLY/);
     assert.equal(shellRan, false);
-    assert.equal(ctx.tools.schemas().filter(x => x.name.startsWith('sdh_')).length, 7);
+    assert.equal(ctx.tools.schemas().filter(x => x.name.startsWith('sdh_')).length, 31);
     const result = await ctx.tools.execute({ callId: 'sdh-test', name: 'sdh_gene_resolve',
       arguments: { gene_id: 'test' }, signal: new AbortController().signal });
     assert.equal(result.isError, false, JSON.stringify(result));
