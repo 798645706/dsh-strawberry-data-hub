@@ -2,7 +2,7 @@
 
 将 Strawberry Data Hub 的草莓研究数据接入 DeepSeek Harness（DSH）。通过自然语言查询文献、解析基因、查看多组学上下文，并下载经过校验的 FASTA 序列。
 
-当前版本：`0.1.0-beta.3`。
+当前版本：`0.1.0-beta.4`。
 
 代谢物按原始名称分组计数，并明确参考目录的计数范围，避免将重复目录条目相加。以上数量仅针对本次返回的数据，不代表完整数据库或独立化合物数量。
 
@@ -32,10 +32,15 @@
 | `sdh_crispr_query` / `sdh_primer_specificity_status` | 查询 CRISPR 数据、已有任务状态及引物特异性服务可用性 |
 | `sdh_genome_evidence_query` | 查询参考组装、定位、区间、序列及变异证据 |
 | `sdh_genome_prediction_prepare` | 查询预测参考目录、验证一个显式 SNV 草稿 |
+| `sdh_berryplot_prepare` | 准备 BerryPlot 绘图方案，返回待确认草稿 |
+| `sdh_berrylocus_prepare` | 准备带完整参考和 SNV 参数的 BerryLocus 预测草稿 |
+| `sdh_task_confirm` / `sdh_task_status` | 经 DSH 单独确认后提交任务，并查询同一任务状态 |
+| `sdh_prediction_result` | 获取已完成的 BerryLocus 预测结果 |
+| `sdh_plot_download` | 校验并下载 BerryPlot 图件及数据 |
 
-共 31 项工具：29 项服务端接口、2 项本地工具。接口白名单根据 2026-10-09 线上契约固定，不会自动启用服务端后来增加的工具。目录显示的服务器能力可能多于插件可执行的能力。
+共 37 项工具：29 项只读接口、2 项本地工具和6项任务流程工具。接口白名单根据 2026-10-09 线上契约固定，不会自动启用服务端后来增加的工具。目录显示的服务器能力可能多于插件可执行的能力。
 
-BLAST 和 CRISPR 新任务提交、网站预测确认按钮、BerryPlot 交互绘图流程请在网站使用。预测草稿验证不代表已提交或完成预测；引物特异性状态查询不代表已完成特异性分析。
+BLAST 和 CRISPR 新任务提交请在网站使用。本版本支持 BerryPlot 和 BerryLocus 的准备、确认及结果获取；取消、改图、重启后恢复任务仍需后续接入。预测草稿验证不代表已提交或完成预测；引物特异性状态查询不代表已完成特异性分析。
 
 基因查询使用“基因 ID + 物种 + 组装版本”精确定位。序列导出直接使用服务端原始序列，校验序列长度、字符集、SHA-256及写入后的文件字节。新文件使用独立文件名。
 
@@ -47,7 +52,7 @@ BLAST 和 CRISPR 新任务提交、网站预测确认按钮、BerryPlot 交互�
 
 ```powershell
 dsh --profile strawberry --from-default-profile web --dump-config
-dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.3
+dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.4
 dsh --profile strawberry --dump-config
 dsh --profile strawberry
 ```
@@ -55,7 +60,7 @@ dsh --profile strawberry
 也可使用下载的发行包：
 
 ```powershell
-dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.3.tgz
+dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.4.tgz
 ```
 
 第一条初始化命令仅用于尚未存在的配置。将 `strawberry` 换为已有 Web 配置名称时，跳过初始化。模型账号由 DSH 管理。
@@ -90,6 +95,23 @@ dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.3.tgz
 
 > 给 FvesChr6G00057790.1 和 FvesChr2G00181140.1 做注释表，物种 Fragaria vesca，组装 v6.0(Horticulture Research. 2023)。
 
+### BerryPlot 和 BerryLocus
+
+> 请画 Camarosa 数据集的 FxaC_10g00030、FxaC_10g00031、FxaC_10g00070 表达热图。先展示方案，确认后提交。
+
+> 查询 BerryLocus 中 Camarosa 可用的预测参考和方法，先不要提交预测。
+
+绘图或预测按以下步骤执行：
+
+1. 明确数据集和基因，或选择预测参考、方法及完整 SNV 参数。预测使用明确的 1-based 位置和 REF/ALT，不补猜缺失参数。
+2. DSH 请求授权后，将需求发送给网站准备草稿。此步骤适用网站模型／试用配额，不开始绘图或预测计算。
+3. 查看草稿中的数据来源和参数，在 DSH 中单独批准 `sdh_task_confirm` 后开始任务。
+4. 查询返回的同一任务 ID；成功后获取预测结果，或下载 PNG、PDF、SVG、TIFF、绘图数据及相关说明文件。具体文件以该任务实际提供的产物为准。
+
+任务会话和确认凭据只存于当前 DSH 进程内存，各对话隔离，不交给模型，也不转发 DSH 的模型密钥。下载链接仅供运行 DSH 的本机使用，15分钟有效；重启或切换对话后不能继续访问原任务。没有可用授权通道时不会提交。
+
+请求结果不明确时，保留原草稿和任务 ID，不自动新建任务。遇到网站配额限制则停止，可在网站中使用已有账户配置处理。预测结果保留模型、参考版本及 `scientificValidation` 标记；模型分数不等同于实验验证的功能效应。
+
 ## 配置
 
 默认服务地址为 [Strawberry Data Hub](https://sci.hainanu.edu.cn/strawberry/)。默认请求超时45秒，无需向插件传入网站模型密钥。
@@ -104,9 +126,9 @@ dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.3.tgz
     researchOnly: true
 ```
 
-`researchOnly` 为可选设置，默认关闭。开启后，该配置仅允许上述 31 项 SDH 工具及 `ask_user_question`，适合草莓研究专用环境。
+`researchOnly` 为可选设置，默认关闭。开启后，该配置仅允许上述 37 项 SDH 工具及 `ask_user_question`，适合草莓研究专用环境。
 
-`timeoutMs` 范围为100–120000毫秒。服务地址由本地配置决定。遇到限流时，请稍后重新请求。
+`timeoutMs` 范围为100–120000毫秒，用于只读接口。任务流程请求固定90秒超时；这不代表服务端任务停止。服务地址由本地配置决定。任务流程遇到限流或连接中断不会自动重试。
 
 ## 数据与结果说明
 
