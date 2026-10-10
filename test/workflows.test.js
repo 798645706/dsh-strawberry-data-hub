@@ -8,6 +8,8 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import * as plugin from '../src/index.js';
 import { createWorkflows, createArtifactDownloads, plotDataPreview } from '../src/workflows.js';
 const grant='g'.repeat(43),csrf='c'.repeat(43),plot='plot-'+'a'.repeat(32),pred='pred-'+'b'.repeat(32);
+const plotPlan={template:'expression_heatmap',dataset:'fixture',genes:['g']};
+const locusPlan={assemblyId:'sdh-asm-978dddb4-a7d0-5230-9646-f5bc3f7b2e33',releaseId:'fixture',methodId:'sdh-dna-'+'a'.repeat(64),contig:'chr1',position:10001,coordinateSystem:'1-based',ref:'T',alt:'A'};
 function proposal(kind='plot') {
   const confirmation={grant,csrf,expiresAt:kind==='plot'?Date.now()/1000+900:new Date(Date.now()+900000).toISOString(),state:'awaiting_confirmation'};
   return {tools:[{name:kind==='plot'?'berryplot_prepare':'genome_prediction_prepare',status:'ok',result:kind==='plot'?{confirmation,plan:{template:'expression_heatmap',genes:['g'],dataset:'fixture'},computationStarted:false}:{confirmation,operation:'prepare',data:{status:'awaiting_confirmation',computationStarted:false}}}]};
@@ -16,14 +18,15 @@ test('workflow session isolation, grant privacy, confirmation reuse and checksum
   const calls=[],bytes=Buffer.from('fixture');let confirmations=0;
   const api=createWorkflows({},async(url,opts)=>{
     calls.push({path:url.pathname,...opts});
-    if(url.pathname.endsWith('/chat'))return Response.json(proposal(),{headers:{'set-cookie':'JSESSIONID=private; Path=/; Secure; HttpOnly'}});
+    if(url.pathname.endsWith('/session'))return Response.json({csrf,modelRequired:false},{headers:{'set-cookie':'JSESSIONID=private; Path=/; Secure; HttpOnly'}});
+    if(url.pathname.endsWith('/prepare'))return Response.json(proposal().tools[0].result);
     assert.equal(opts.headers.Cookie,'JSESSIONID=private');assert.equal(opts.headers['X-SDH-Plot-CSRF'],csrf);
     assert.equal(opts.headers['X-SDH-AI-Key'],undefined);assert.equal(opts.headers['X-SDH-Trial-Id'],undefined);
     if(url.pathname.endsWith('/confirm')){confirmations++;assert.equal(JSON.parse(opts.body).grant,grant);return Response.json({id:plot,state:'queued'});}
     if(url.pathname.includes('/artifacts/'))return new Response(bytes,{headers:{'content-type':'image/png','x-content-sha256':createHash('sha256').update(bytes).digest('hex')}});
     return Response.json({id:plot,state:'succeeded'});
   });
-  const owner={},other={};const draft=await api.prepare(owner,'plot','Plot fixture');
+  const owner={},other={};const draft=await api.preparePlot(owner,plotPlan);
   assert.equal(JSON.stringify(draft).includes(grant),false);assert.equal(JSON.stringify(draft).includes(csrf),false);
   await assert.rejects(api.confirm(other,draft.draftId),/DRAFT_NOT_IN_SESSION/);
   const first=await api.confirm(owner,draft.draftId);assert.equal(first.state,'queued');
@@ -31,46 +34,49 @@ test('workflow session isolation, grant privacy, confirmation reuse and checksum
   await assert.rejects(api.status(other,plot),/TASK_NOT_IN_SESSION/);
   const file=await api.artifact(owner,plot,'figure.png');assert.deepEqual(file.bytes,bytes);
   await assert.rejects(api.artifact(owner,plot,'../secret'),/ARTIFACT_INPUT/);
-  await assert.rejects(api.prepare(owner,'plot','Plot fixture'),/DUPLICATE_PREPARATION/);
+  await assert.rejects(api.preparePlot(owner,plotPlan),/DUPLICATE_PREPARATION/);
   assert.ok(calls.every(c=>c.redirect==='error'));
 });
 test('prediction lifecycle checks task identity and completion',async()=>{
   let done=false;
   const api=createWorkflows({},async(url)=>{
-    if(url.pathname.endsWith('/chat'))return Response.json(proposal('locus'));
+    if(url.pathname.endsWith('/session'))return Response.json({csrf,modelRequired:false});
+    if(url.pathname.endsWith('/prepare'))return Response.json(proposal('locus').tools[0].result);
     if(url.pathname.endsWith('/result'))return Response.json({operation:'predictions',status:'ready',data:{scientificValidation:false}});
     return Response.json({taskId:pred,status:done?'succeeded':'queued'});
   });
-  const owner={},d=await api.prepare(owner,'locus','Explicit fixture SNV');await api.confirm(owner,d.draftId);
+  const owner={},d=await api.prepareLocus(owner,locusPlan);await api.confirm(owner,d.draftId);
   await assert.rejects(api.result(owner,pred),/NOT_COMPLETE/);done=true;
   assert.equal((await api.result(owner,pred)).data.scientificValidation,false);
 });
 test('quota, malformed preparation and network ambiguity never trigger automatic retries',async()=>{
   let calls=0;const api=createWorkflows({},async()=>{calls++;return Response.json({}, {status:429});});
-  const owner={};await assert.rejects(api.prepare(owner,'plot','x'),/HTTP_429/);assert.equal(calls,1);
-  await assert.rejects(api.prepare(owner,'plot','x'),/DUPLICATE_PREPARATION/);assert.equal(calls,1);
-  const malformed=createWorkflows({},async()=>Response.json({tools:[]}));assert.equal((await malformed.prepare({},'plot','x')).status,'not_prepared');
+  const owner={};await assert.rejects(api.preparePlot(owner,plotPlan),/HTTP_429/);assert.equal(calls,1);
+  await assert.rejects(api.preparePlot(owner,plotPlan),/HTTP_429/);assert.equal(calls,2);
+  const malformed=createWorkflows({},async()=>Response.json({tools:[]}));await assert.rejects(malformed.preparePlot({},plotPlan),/SESSION_PROTOCOL/);
 });
 test('corrupt artifact and mismatched task identity are rejected',async()=>{
   let mismatch=false;
   const api=createWorkflows({},async url=>{
-    if(url.pathname.endsWith('/chat'))return Response.json(proposal());
+    if(url.pathname.endsWith('/session'))return Response.json({csrf,modelRequired:false});
+    if(url.pathname.endsWith('/prepare'))return Response.json(proposal().tools[0].result);
     if(url.pathname.includes('/artifacts/'))return new Response('corrupt',{headers:{'content-type':'image/png','x-content-sha256':'0'.repeat(64)}});
     return Response.json({id:mismatch?'plot-'+'f'.repeat(32):plot,state:'succeeded'});
   });
-  const owner={},d=await api.prepare(owner,'plot','x');await api.confirm(owner,d.draftId);
+  const owner={},d=await api.preparePlot(owner,plotPlan);await api.confirm(owner,d.draftId);
   await assert.rejects(api.artifact(owner,plot,'figure.png'),/ARTIFACT_INTEGRITY/);mismatch=true;
   await assert.rejects(api.status(owner,plot),/TASK_PROTOCOL/);
 });
 
 test('ambiguous submission is never replayed automatically; explicit retry retains grant',async()=>{
   const bodies=[];const api=createWorkflows({},async(url,opts)=>{
-    if(url.pathname.endsWith('/chat'))return Response.json(proposal());
+    if(url.pathname.endsWith('/session'))return Response.json({csrf,modelRequired:false});
+    if(url.pathname.endsWith('/prepare'))return Response.json(proposal().tools[0].result);
     bodies.push(JSON.parse(opts.body));
     if(bodies.length===1)throw new Error('private network detail');
     return Response.json({id:plot,state:'queued'});
   });
-  const owner={},d=await api.prepare(owner,'plot','fixture');
+  const owner={},d=await api.preparePlot(owner,plotPlan);
   await assert.rejects(api.confirm(owner,d.draftId),e=>e.message.includes('TRANSPORT')&&!e.message.includes('private network detail'));
   assert.equal(bodies.length,1);
   await api.confirm(owner,d.draftId);assert.deepEqual(bodies,[{grant},{grant}]);
@@ -87,7 +93,7 @@ test('loopback artifact download provides exact bytes; unknown paths and POST ca
 test('native DSH refuses preparation without an approval service and refuses invented draft confirmation',async()=>{
   const ctx=new Context();try{
     await ctx.plugin(SystemPrompt,{});await ctx.plugin(ToolRuntime);await ctx.plugin(plugin,{researchOnly:true});
-    for(const [name,args]of [['sdh_berryplot_prepare',{question:'fixture'}],['sdh_task_confirm',{draft_id:'invented'}]]){
+    for(const [name,args]of [['sdh_berryplot_prepare',{operation:'prepare',template:'expression_heatmap',dataset:'camarosa',genes:['g']}],['sdh_task_confirm',{draft_id:'invented'}]]){
       const r=await ctx.tools.execute({callId:name,name,arguments:args,signal:new AbortController().signal});assert.equal(r.isError,true);
     }
   }finally{ctx.registry.delete(plugin);ctx.registry.delete(ToolRuntime);ctx.registry.delete(SystemPrompt);}
@@ -98,7 +104,8 @@ test('native DSH approved preparation and separate confirmation preserve draft a
   const server=createServer(async(req,res)=>{
     requests++;let body='';for await(const chunk of req)body+=chunk;
     res.setHeader('Content-Type','application/json');
-    if(req.url.endsWith('/chat')){res.setHeader('Set-Cookie','JSESSIONID=fixture; Path=/');res.end(JSON.stringify(proposal()));return;}
+    if(req.url.endsWith('/session')){res.setHeader('Set-Cookie','JSESSIONID=fixture; Path=/');res.end(JSON.stringify({csrf,modelRequired:false}));return;}
+    if(req.url.endsWith('/prepare')){assert.equal(req.headers['x-sdh-plot-csrf'],csrf);res.end(JSON.stringify(proposal().tools[0].result));return;}
     assert.equal(req.headers.cookie,'JSESSIONID=fixture');assert.equal(req.headers['x-sdh-plot-csrf'],csrf);
     if(req.url.endsWith('/confirm')){confirmations++;assert.equal(JSON.parse(body).grant,grant);}
     res.end(JSON.stringify({id:plot,state:'succeeded'}));
@@ -110,10 +117,10 @@ test('native DSH approved preparation and separate confirmation preserve draft a
     await ctx.plugin(SystemPrompt,{});await ctx.plugin(ToolRuntime);await ctx.plugin(plugin,{baseUrl:`http://127.0.0.1:${server.address().port}/`,researchOnly:true});
     const agent={session:{}};
     const run=(name,args)=>ctx.tools.execute({callId:String(approvals.length),name,arguments:args,agent,signal:new AbortController().signal});
-    const prepared=await run('sdh_berryplot_prepare',{question:'fixture'});
+    const prepared=await run('sdh_berryplot_prepare',{operation:'prepare',template:'expression_heatmap',dataset:'camarosa',genes:['g']});
     assert.equal(prepared.isError,false,JSON.stringify(prepared));
-    const d=JSON.parse(prepared.content[0].text);assert.equal(requests,1);assert.equal(confirmations,0);
-    allow=false;assert.equal((await run('sdh_task_confirm',{draft_id:d.draftId})).isError,true);assert.equal(requests,1);
+    const d=JSON.parse(prepared.content[0].text);assert.equal(requests,2);assert.equal(confirmations,0);
+    allow=false;assert.equal((await run('sdh_task_confirm',{draft_id:d.draftId})).isError,true);assert.equal(requests,2);
     allow=true;assert.equal((await run('sdh_task_confirm',{draft_id:d.draftId})).isError,false);assert.equal(confirmations,1);
     assert.equal(approvals.length,3);assert.match(approvals[2].reason,/expression_heatmap/);
     assert.equal(approvals[2].reason.includes(grant),false);assert.equal(approvals[2].reason.includes(csrf),false);

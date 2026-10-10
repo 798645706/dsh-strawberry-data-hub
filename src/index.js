@@ -22,7 +22,8 @@ export function apply(ctx, config = {}) {
   ctx.on('tools/pre-execute', async (exec, next) => {
     const decision = await next();
     if (decision.kind === 'deny') return decision;
-    if (['sdh_berryplot_prepare','sdh_berrylocus_prepare'].includes(exec.name)) return {kind:'ask',reason:'Send this request to the SDH website to prepare a task. Website model/trial quota applies. No DSH model credentials are forwarded. Preparation does not start computation. Request: '+String(exec.arguments.question).slice(0,4000)};
+    if (exec.name==='sdh_berryplot_prepare'&&exec.arguments.operation!=='catalogue') return {kind:'ask',reason:'Prepare a BerryPlot draft from server data using these parameters. No website model or trial quota is used; rendering requires separate confirmation. '+JSON.stringify(exec.arguments)};
+    if (exec.name==='sdh_berrylocus_prepare'&&exec.arguments.operation!=='catalogue') return {kind:'ask',reason:'Validate this exact SNV and prepare a BerryLocus draft. No website chat model or trial quota is used. Computing requires separate confirmation. '+JSON.stringify(exec.arguments)};
     if (exec.name === 'sdh_task_confirm') {
       try { return {kind:'ask',reason:'Start this exact prepared server task after reviewing its data and settings: '+JSON.stringify(workflows.summary(exec.agent?.session,exec.arguments.draft_id))}; }
       catch { return {kind:'deny',reason:'No valid task draft in this session; prepare and review one first.'}; }
@@ -36,10 +37,13 @@ export function apply(ctx, config = {}) {
       if(Object.keys(args).some(k=>!Object.hasOwn(parameters,k)))throw new Error('SDH_WORKFLOW_INPUT: Unknown parameter.');
       return execute(args,exec);
     }}));
-  for (const kind of ['plot','locus']) registerWorkflow(kind==='plot'?'sdh_berryplot_prepare':'sdh_berrylocus_prepare',
-    kind==='plot'?'Prepare a BerryPlot figure from an explicit user request (dataset, genes, plot type). Requires approval; uses website quota and a private session. Returns a reviewable draft, never a completed plot. No arbitrary code or invented data.':'Prepare a BerryLocus SNV prediction from explicit assembly/release/method, contig, 1-based position, REF and ALT. Discover these with read-only tools first. Requires approval and website quota; never infer missing alleles or submit automatically.',
-    {question:requiredText('Exact complete user request, 1–4000 characters. Include explicit dataset/gene IDs or reference and SNV fields.')},
-    (a,e)=>workflows.prepare(e.agent?.session,kind,a.question,e.signal));
+  registerWorkflow('sdh_berryplot_prepare','Query operation=catalogue first for exact supported datasets and templates. operation=prepare creates a reviewable draft using structured parameters and server-owned data, with no website model/trial quota. Separate approval is required to render. Never supply matrices or code. expression_points compares tissues; boxplots require replicate datasets.',
+    {operation:{type:'string',required:true,enum:['catalogue','prepare']},template:{type:'string'},dataset:{type:'string'},analysis:{type:'string'},genes:{type:'array',items:{type:'string'}},language:{type:'string',enum:['zh','en']}},
+    (a,e)=>{const {operation,...plan}=a;if(operation==='catalogue'){if(Object.keys(plan).length)throw new Error('SDH_WORKFLOW_INPUT: Catalogue takes no plot parameters.');return workflows.plotCatalogue(e.agent?.session,e.signal);}if(operation!=='prepare')throw new Error('SDH_WORKFLOW_INPUT: Invalid operation.');return workflows.preparePlot(e.agent?.session,plan,e.signal);});
+  registerWorkflow('sdh_berrylocus_prepare',
+    'operation=catalogue discovers exact prediction references and method IDs; optional query filters references. operation=prepare validates an explicit 1-based SNV and returns a draft. No website chat model or trial quota is used. Never guess reference, position or alleles. Separate DSH confirmation is required to compute; model scores are not experimental validation.',
+    {operation:{type:'string',required:true,enum:['catalogue','prepare']},query:{type:'string'},assemblyId:{type:'string'},releaseId:{type:'string'},methodId:{type:'string'},contig:{type:'string'},position:{type:'number'},coordinateSystem:{type:'string',enum:['1-based']},ref:{type:'string',enum:['A','C','G','T']},alt:{type:'string',enum:['A','C','G','T']}},
+    (a,e)=>{const {operation,query,...plan}=a;if(operation==='catalogue'){if(Object.keys(plan).length)throw new Error('SDH_WORKFLOW_INPUT: Catalogue accepts query only.');return workflows.locusCatalogue(e.agent?.session,query??'',e.signal);}if(operation!=='prepare'||query!==undefined)throw new Error('SDH_WORKFLOW_INPUT: Invalid operation.');return workflows.prepareLocus(e.agent?.session,plan,e.signal);});
   registerWorkflow('sdh_task_confirm','Submit one previously prepared BerryPlot/BerryLocus draft only after the native DSH approval. Reusing the draft reuses its server grant. Never prepare a new task to retry an uncertain submission.',
     {draft_id:requiredText('Exact draftId from this session.')},(a,e)=>workflows.confirm(e.agent?.session,a.draft_id,e.signal));
   registerWorkflow('sdh_task_status','Read an existing task from this DSH session. Queued/running is not completion. No automatic resubmission; do not poll in a tight loop.',

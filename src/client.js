@@ -4,7 +4,7 @@ import { literatureScope } from './science.js';
 import { metaboliteMetrics, referenceMetrics, locusMetrics } from './metrics.js';
 import { websiteLinks } from './links.js';
 
-export const VERSION = '0.1.0-beta.6';
+export const VERSION = '0.1.0-beta.8';
 export function checkSequences(result, args) {
   if (!Array.isArray(result.sequences)) throw new Error('SDH_PROTOCOL: Missing sequence list.');
   if (result.sequences.some(e => e.available) && !result.gene) throw new Error('SDH_PROTOCOL: Missing sequence gene key.');

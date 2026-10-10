@@ -27,6 +27,8 @@ export function createWorkflows(config = {}, fetchImpl = fetch) {
   }
   async function request(s,path,body,signal,csrf,kind,binary=false) {
     const headers={Accept:binary?'*/*':'application/json'};
+    if(path==='api/v1/ai/plots/session')headers['X-SDH-Plot-Client']='dsh-v1';
+    if(path==='api/v1/ai/predictions/session')headers['X-SDH-Prediction-Client']='dsh-v1';
     if (s.cookies.size) headers.Cookie=[...s.cookies].map(([k,v])=>`${k}=${v}`).join('; ');
     if (body !== undefined) headers['Content-Type']='application/json';
     if (csrf) headers[kind==='plot'?'X-SDH-Plot-CSRF':'X-SDH-Prediction-CSRF']=csrf;
@@ -37,14 +39,26 @@ export function createWorkflows(config = {}, fetchImpl = fetch) {
         const pair=line.split(';')[0], i=pair.indexOf('=');
         if(i>0 && /^[A-Za-z0-9_-]+$/.test(pair.slice(0,i)) && !/[\r\n]/.test(pair)) s.cookies.set(pair.slice(0,i),pair.slice(i+1));
       }
-      if(!response.ok){await response.body?.cancel();fail(`HTTP_${response.status}: Request unavailable; no automatic retry. Website trial limits and session permissions apply.`);}
+      if(!response.ok){
+        // Return a bounded code, never remote HTML, credentials or arbitrary error instructions.
+        let detail='Request rejected; no automatic retry.';
+        if(response.status===429)detail=kind==='plot'?'Plot request rate limit reached; no draft is implied.':'Prediction request rate limit reached; no draft is implied.';
+        if(response.status===401||response.status===403)detail='Session authorization rejected.';
+        if(response.status===400)detail='Invalid dataset, genes or plot parameters; query the catalogue.';
+        await response.body?.cancel();const e=new Error(`SDH_WORKFLOW_HTTP_${response.status}: ${detail}`);
+        e.definiteRejection=[400,401,403,404,405,413,415,429].includes(response.status);throw e;
+      }
       const chunks=[];let size=0;
       for await(const chunk of response.body){size+=chunk.length;if(size>(binary?20*1024*1024:1024*1024))fail('RESPONSE_TOO_LARGE');chunks.push(chunk);}
       const bytes=Buffer.concat(chunks);
       if(binary)return {bytes,mime:response.headers.get('content-type')?.split(';')[0],sha256:response.headers.get('x-content-sha256')};
       if(!response.headers.get('content-type')?.includes('application/json'))fail('PROTOCOL');
       return JSON.parse(bytes.toString('utf8'));
-    }catch(e){if(e.message?.startsWith('SDH_WORKFLOW_'))throw e;fail('TRANSPORT: Outcome may be unknown. Do not prepare or submit a replacement automatically.');}
+    }catch(e){
+      if(e.message?.startsWith('SDH_WORKFLOW_'))throw e;
+      if(body===undefined||path.endsWith('/session'))fail('READ_TRANSPORT: Read/session connection failed. This call did not submit computation. The same read may be retried; do not recreate or resubmit a task.');
+      fail('TRANSPORT: Outcome may be unknown. Do not prepare or submit a replacement automatically.');
+    }
   }
   async function locked(s,work){if(s.busy)fail('BUSY');s.busy=true;try{return await work();}finally{s.busy=false;}}
   function draft(s,id){const d=s.drafts.get(id);if(!d)fail('DRAFT_NOT_IN_SESSION');if(Date.now()>=d.expiresAt)fail('DRAFT_EXPIRED');return d;}
@@ -54,24 +68,72 @@ export function createWorkflows(config = {}, fetchImpl = fetch) {
     return {id,state};
   }
   const prefix=kind=>kind==='plot'?'api/v1/ai/plots/':'api/v1/ai/predictions/';
+  async function plotSession(s,signal){
+    if(s.plotCsrf)return;
+    const r=await request(s,'api/v1/ai/plots/session',{},signal,undefined,'plot');
+    if(!token(r.csrf)||r.modelRequired!==false)fail('SESSION_PROTOCOL');s.plotCsrf=r.csrf;
+  }
+  async function locusSession(s,signal){
+    if(s.locusCsrf)return;
+    const r=await request(s,'api/v1/ai/predictions/session',{},signal,undefined,'locus');
+    if(!token(r.csrf)||r.modelRequired!==false)fail('SESSION_PROTOCOL');s.locusCsrf=r.csrf;
+  }
+  function locusPlan(input){
+    const keys=['assemblyId','releaseId','methodId','contig','position','coordinateSystem','ref','alt'];
+    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length!==keys.length||keys.some(k=>!Object.hasOwn(input,k)))fail('INPUT: Exact SNV parameters required.');
+    const p=Object.fromEntries(keys.map(k=>[k,input[k]]));
+    if(!/^sdh-asm-[a-f0-9-]{36}$/.test(p.assemblyId)||!/^sdh-dna-[a-f0-9]{64}$/.test(p.methodId)
+      ||['releaseId','contig'].some(k=>typeof p[k]!=='string'||! /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(p[k]))
+      ||!Number.isInteger(p.position)||p.position<1||p.position>2147483647||p.coordinateSystem!=='1-based'
+      ||! /^[ACGT]$/.test(p.ref)||! /^[ACGT]$/.test(p.alt)||p.ref===p.alt)fail('INPUT: Exact reference, method and distinct 1-based SNV alleles required.');
+    return p;
+  }
+  function plotPlan(input){
+    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!['template','dataset','analysis','genes','language'].includes(k)))fail('INPUT: Structured plot parameters required.');
+    const p={template:input.template,dataset:input.dataset,analysis:input.analysis??'',genes:input.genes??[],language:input.language??'zh'};
+    if(!['expression_heatmap','expression_points','expression_boxplot','expression_stage_line','enrichment_dot','enrichment_bar','umap_cell_type','reported_association_plot','dna_llr'].includes(p.template)
+      ||typeof p.dataset!=='string'||!p.dataset.length||p.dataset.length>255||typeof p.analysis!=='string'||p.analysis.length>160
+      ||!['zh','en'].includes(p.language)||!Array.isArray(p.genes)||p.genes.length>50||p.genes.some(g=>typeof g!=='string'||!/^[A-Za-z0-9_.:-]{1,128}$/.test(g))||new Set(p.genes).size!==p.genes.length)fail('INPUT: Invalid plot parameters.');
+    return p;
+  }
   return {
-    async prepare(owner,kind,question,signal){
-      if(!['plot','locus'].includes(kind)||typeof question!=='string'||!question.trim()||question.length>4000)fail('INPUT');
-      const s=session(owner);return locked(s,async()=>{
-        // Never replay an ambiguous preparation; a new explicit user request is needed.
-        const key=kind+':'+question.trim();
-        if(s.lastPrepare===key)fail('DUPLICATE_PREPARATION: Inspect the existing draft or clarify the request.');
-        s.lastPrepare=key;
+    async plotCatalogue(owner,signal){const s=session(owner);return locked(s,async()=>{await plotSession(s,signal);return clean(await request(s,prefix('plot')+'catalogue',undefined,signal,s.plotCsrf,'plot'));});},
+    async preparePlot(owner,input,signal){
+      const plan=plotPlan(input),s=session(owner);
+      return locked(s,async()=>{
+        const key='plot:'+JSON.stringify(plan);
+        if(s.lastPrepare===key)fail('DUPLICATE_PREPARATION: Local duplicate guard; this does not prove a server draft exists. Inspect the previous result; do not change wording to bypass.');
         for(const [id,d]of s.drafts)if(Date.now()>=d.expiresAt)s.drafts.delete(id);
         if(s.drafts.size>=16)fail('DRAFT_LIMIT');
-        const response=await request(s,'api/v1/ai/agent/chat',{sessionId:s.id,question:question.trim(),messages:[],interactionMode:'agent'},signal);
-        const tool=response.tools?.find(t=>t.name===(kind==='plot'?'berryplot_prepare':'genome_prediction_prepare')&&t.status==='ok');
-        const r=tool?.result,c=r?.confirmation;
-        const expiresAt=kind==='plot'?Number(c?.expiresAt)*1000:Date.parse(c?.expiresAt);
-        if(!token(c?.grant)||!token(c?.csrf)||!Number.isFinite(expiresAt)||expiresAt<=Date.now())return {status:'not_prepared',computationStarted:false,response:clean(response),websiteUrl:new URL('ai.html',base).href,notice:'No valid task grant returned. Credential fields are omitted; source digests refer to the original server results before redaction.'};
-        if(kind==='plot'?(r.computationStarted!==false||c.state!=='awaiting_confirmation'):(r.operation!=='prepare'||r.data?.computationStarted!==false||r.data?.status!=='awaiting_confirmation'))fail('DRAFT_PROTOCOL');
-        const id=randomUUID();s.drafts.set(id,{kind,grant:c.grant,csrf:c.csrf,expiresAt,summary:clean(r),taskId:null});
-        return {status:'awaiting_confirmation',draftId:id,expiresAt:new Date(expiresAt).toISOString(),computationStarted:false,summary:clean(r),notice:'Review this exact draft; sdh_task_confirm requires DSH approval. A draft is not a completed result. Website quota applies to preparation.'};
+        await plotSession(s,signal);s.lastPrepare=key;
+        let r;
+        try{r=await request(s,prefix('plot')+'prepare',plan,signal,s.plotCsrf,'plot');}
+        catch(e){if(e.definiteRejection)s.lastPrepare=null;throw e;}
+        const c=r.confirmation,expiresAt=Number(c?.expiresAt)*1000;
+        if(!token(c?.grant)||!token(c?.csrf)||!Number.isFinite(expiresAt)||expiresAt<=Date.now()||r.computationStarted!==false||c.state!=='awaiting_confirmation')fail('DRAFT_PROTOCOL');
+        const id=randomUUID();s.drafts.set(id,{kind:'plot',grant:c.grant,csrf:c.csrf,expiresAt,summary:clean(r),taskId:null});
+        return {status:'awaiting_confirmation',draftId:id,expiresAt:new Date(expiresAt).toISOString(),computationStarted:false,modelRequired:false,summary:clean(r),notice:'Review this exact draft; sdh_task_confirm requires separate DSH approval. No website model or trial quota is used.'};
+      });
+    },
+    async locusCatalogue(owner,query='',signal){
+      if(typeof query!=='string'||query.length>100)fail('INPUT');
+      const s=session(owner);return locked(s,async()=>{await locusSession(s,signal);return clean(await request(s,prefix('locus')+'catalogue?query='+encodeURIComponent(query),undefined,signal,s.locusCsrf,'locus'));});
+    },
+    async prepareLocus(owner,input,signal){
+      const plan=locusPlan(input),s=session(owner);
+      return locked(s,async()=>{
+        const key='locus:'+JSON.stringify(plan);
+        if(s.lastPrepare===key)fail('DUPLICATE_PREPARATION: Local duplicate guard; no server draft is implied. Inspect the previous result.');
+        for(const [id,d]of s.drafts)if(Date.now()>=d.expiresAt)s.drafts.delete(id);
+        if(s.drafts.size>=16)fail('DRAFT_LIMIT');
+        await locusSession(s,signal);s.lastPrepare=key;
+        let r;try{r=await request(s,prefix('locus')+'prepare',plan,signal,s.locusCsrf,'locus');}
+        catch(e){if(e.definiteRejection)s.lastPrepare=null;throw e;}
+        const c=r.confirmation,expiresAt=Date.parse(c?.expiresAt);
+        if(!token(c?.grant)||!token(c?.csrf)||!Number.isFinite(expiresAt)||expiresAt<=Date.now()
+          ||r.operation!=='prepare'||r.data?.computationStarted!==false||r.data?.status!=='awaiting_confirmation')fail('DRAFT_PROTOCOL');
+        const id=randomUUID();s.drafts.set(id,{kind:'locus',grant:c.grant,csrf:c.csrf,expiresAt,summary:clean(r),taskId:null});
+        return {status:'awaiting_confirmation',draftId:id,expiresAt:new Date(expiresAt).toISOString(),computationStarted:false,modelRequired:false,summary:clean(r),notice:'Review this exact SNV draft; separate DSH approval is required to compute. Website chat model and trial quota are not used. Prediction compute limits still apply.'};
       });
     },
     summary(owner,id){return draft(session(owner),id).summary;},

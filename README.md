@@ -2,7 +2,7 @@
 
 将 Strawberry Data Hub 的草莓研究数据接入 DeepSeek Harness（DSH）。通过自然语言查询文献、解析基因、查看多组学上下文，并下载经过校验的 FASTA 序列。
 
-当前版本：**Beta 2**。公开版本按 Beta 1、Beta 2 展示；Beta 2 的 npm 安装包版本为 `0.1.0-beta.6`。安装时请使用下面的完整命令，旧的 `0.1.0-beta.2` 包不包含本版全部功能。
+当前版本：**Beta 2**。公开版本按 Beta 1、Beta 2 展示；Beta 2 的 npm 安装包版本为 `0.1.0-beta.8`。安装时请使用下面的完整命令，旧的 `0.1.0-beta.2` 包不包含本版全部功能。
 
 代谢物按原始名称分组计数，并明确参考目录的计数范围，避免将重复目录条目相加。以上数量仅针对本次返回的数据，不代表完整数据库或独立化合物数量。
 
@@ -54,7 +54,7 @@ BLAST 和 CRISPR 新任务提交请在网站使用。本版本支持 BerryPlot �
 
 ```powershell
 dsh --profile strawberry --from-default-profile web --dump-config
-dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.6
+dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.8
 dsh --profile strawberry --dump-config
 dsh --profile strawberry
 ```
@@ -62,7 +62,7 @@ dsh --profile strawberry
 也可使用下载的发行包：
 
 ```powershell
-dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.6.tgz
+dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.8.tgz
 ```
 
 第一条初始化命令仅用于尚未存在的配置。将 `strawberry` 换为已有 Web 配置名称时，跳过初始化。模型账号由 DSH 管理。
@@ -106,13 +106,15 @@ dsh plugin --profile strawberry add ./dsh-strawberry-data-hub-0.1.0-beta.6.tgz
 绘图或预测按以下步骤执行：
 
 1. 明确数据集和基因，或选择预测参考、方法及完整 SNV 参数。预测使用明确的 1-based 位置和 REF/ALT，不补猜缺失参数。
-2. DSH 请求授权后，将需求发送给网站准备草稿。此步骤适用网站模型／试用配额，不开始绘图或预测计算。
+2. BerryPlot 先查询绘图目录，再发送结构化参数准备草稿，不调用网站模型、不消耗网站试用额度。BerryLocus 同样通过参考目录和结构化 SNV 参数准备草稿，不使用网站聊天模型或试用额度。两者均不在准备阶段开始计算。
 3. 查看草稿中的数据来源和参数，在 DSH 中单独批准 `sdh_task_confirm` 后开始任务。
 4. 查询返回的同一任务 ID；成功后获取预测结果，或下载 PNG、PDF、SVG、TIFF、绘图数据及相关说明文件。具体文件以该任务实际提供的产物为准。
 
 任务会话和确认凭据只存于当前 DSH 进程内存，各对话隔离，不交给模型，也不转发 DSH 的模型密钥。下载链接仅供运行 DSH 的本机使用，15分钟有效；重启或切换对话后不能继续访问原任务。没有可用授权通道时不会提交。
 
-请求结果不明确时，保留原草稿和任务 ID，不自动新建任务。遇到网站配额限制则停止，可在网站中使用已有账户配置处理。预测结果保留模型、参考版本及 `scientificValidation` 标记；模型分数不等同于实验验证的功能效应。
+请求结果不明确时，保留原草稿和任务 ID，不自动新建任务。遇到限流或权限拒绝则停止，不自动重试；明确拒绝后可由用户决定再次尝试。服务器任务权限、请求限流和计算资源限制仍适用。预测结果保留模型、参考版本及 `scientificValidation` 标记；模型分数不等同于实验验证的功能效应。
+
+全部37项已接入工具均不调用网站聊天模型接口，不消耗网站聊天试用额度。DSH 自身使用用户配置的模型账号，其服务计费独立；BerryLocus 的 DNA 模型推理仍在服务器运行。此变更不代表无限计算额度或启用尚未开放的服务。
 
 ## 配置
 
