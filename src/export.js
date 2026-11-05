@@ -16,13 +16,15 @@ export function buildFasta(result, args) {
   return { content, fileSha256: createHash('sha256').update(content, 'utf8').digest('hex'), bytes: Buffer.byteLength(content) };
 }
 
-export async function exportFasta(value, args, exec) {
+export async function exportFasta(value, args, exec, deliverFile) {
   const agent = exec.agent;
-  const cwd = agent?.session?.header?.cwd;
   const fs = agent?.ctx?.get('fs');
   const projections = agent?.ctx?.get('sessionProjections');
   const boundary = projections?.stateOf(agent.session, 'turnBoundary');
-  if (!cwd || !fs || boundary?.openTurnStartSeq == null) throw new Error('SDH_EXPORT_UNAVAILABLE: Requires an active DSH workspace turn with filesystem and deliverables support.');
+  if (!fs || boundary?.openTurnStartSeq == null) throw new Error('SDH_EXPORT_UNAVAILABLE: Requires an active DSH workspace turn with filesystem and deliverables support.');
+  const workingDirectory = agent.ctx.get('workingDirectory');
+  const cwd = workingDirectory ? await workingDirectory.ensure(agent, exec.signal) : agent.session.header?.cwd;
+  if (!cwd) throw new Error('SDH_EXPORT_UNAVAILABLE: No active workspace directory.');
   const policyService = agent.ctx.get('sandboxPolicy');
   if (fs.sandboxMode !== undefined && !policyService) throw new Error('SDH_EXPORT_UNAVAILABLE: Missing filesystem sandbox policy.');
   const policy = policyService?.resolve({ session: agent.session });
@@ -35,15 +37,13 @@ export async function exportFasta(value, args, exec) {
   const saved = await fs.readBytes(target, exec.signal, 2 * 1024 * 1024);
   if (createHash('sha256').update(saved).digest('hex') !== file.fileSha256) throw new Error('SDH_FILE_INTEGRITY: Saved file differs from verified FASTA; it was not presented.');
   exec.signal.throwIfAborted();
-  const webServer = agent.ctx.get('webServer');
-  const downloadPath = `/api/file?path=${encodeURIComponent(target.displayPath)}`;
-  const downloadUrl = webServer?.host === '127.0.0.1' && Number.isInteger(webServer.port)
-    ? `http://127.0.0.1:${webServer.port}${downloadPath}` : downloadPath;
+  const path = fs.processPath ? fs.processPath(target) : target.displayPath;
+  const download = deliverFile ? await deliverFile({ bytes: saved, name: filename, mime: 'text/plain; charset=utf-8', sha256: file.fileSha256 }) : {};
   return {
-    delivery: { session: agent.session, turn: boundary.lastTurn, files: [{ path: target.displayPath, description: `Verified SDH FASTA: ${args.gene_id}` }] },
+    delivery: { session: agent.session, turn: boundary.lastTurn, files: [{ path, description: `Verified SDH FASTA: ${args.gene_id}` }] },
     result: { ...value, result: { ...value.result, sequences: value.result.sequences.map(({ sequence, ...entry }) => ({ ...entry, sequenceOmittedFromModel: typeof sequence === 'string' })) },
-      file: { path: target.displayPath, downloadUrl, fileSha256: file.fileSha256, bytes: saved.length, verified: true, format: 'FASTA', created: true },
-      deliveryNotice: 'File bytes were verified after writing by this local plugin, using the original server sequence. This tool publishes its own DSH deliverable on success; do not call present again. In the Web UI include a Markdown download link using file.downloadUrl. Source files remain editable. Do not reconstruct sequences from metadata.' },
+      file: { ...download, path, fileSha256: file.fileSha256, bytes: saved.length, verified: true, format: 'FASTA', created: true },
+      deliveryNotice: 'File bytes were verified after writing by this local plugin, using the original server sequence. This tool publishes its own DSH deliverable on success; do not call present again. Include a Markdown download link when file.downloadUrl is provided. The link lasts 15 minutes and requires this DSH process; the workspace file remains available. Do not reconstruct sequences from metadata.' },
   };
 }
 

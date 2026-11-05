@@ -86,7 +86,7 @@ export function apply(ctx, config = {}) {
     async execute(input, exec) {
       const args = validateArguments('sequence_fetch', input);
       const value = await call('sequence_fetch', args, exec.signal);
-      const exported = await exportFasta(value, args, exec);
+      const exported = await exportFasta(value, args, exec, file => downloads.add(file));
       pending.set(exec, exported.delivery);
       return exported.result;
     },

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { buildFasta, exportFasta, renderResult } from '../src/export.js';
 import { createClient } from '../src/client.js';
+import { createArtifactDownloads } from '../src/workflows.js';
 const hash = text => createHash('sha256').update(text).digest('hex');
 const args = { gene_id: 'gene.1', species: 'Fragaria vesca', version: 'v6', type: 'protein' };
 const result = { status: 'ok', gene: { geneId: args.gene_id, species: args.species, version: args.version }, sequences: [{
@@ -50,4 +51,41 @@ test('labels not_found and context resolution independently of execution success
     assert.equal(value.executionStatus, 'ok');
     assert.equal(value.businessStatus, result.status ?? result.resolution.status);
   }
+});
+
+test('exports in the effective working directory with a canonical attachment and verified download', async () => {
+  let saved, checked = false;
+  const downloads = createArtifactDownloads();
+  const policy = { mode: 'workspace-write', workspaceRoot: '/original' };
+  const fs = {
+    sandboxMode: 'workspace-write',
+    resolve: async (p, options) => {
+      if (p !== '/original/current') assert.equal(options.cwd, '/original/current');
+      return { displayPath: p, targetKey: '/original/current/' + p.split('/').at(-1) };
+    },
+    processPath: t => t.targetKey,
+    contains: () => true,
+    writeText: async (_target, content, intent, _signal, effective) => {
+      assert.equal(intent.kind, 'createIfAbsent'); assert.equal(effective, policy); saved = content;
+    },
+    readBytes: async () => Buffer.from(saved),
+  };
+  const services = { fs, workingDirectory: { ensure: async () => { checked = true; return '/original/current'; } },
+    sandboxPolicy: { resolve: () => policy }, sessionProjections: { stateOf: () => ({ openTurnStartSeq: 1, lastTurn: 2 }) } };
+  const agent = { session: { header: { cwd: '/original' } }, ctx: { get: key => services[key] } };
+  try {
+    const output = await exportFasta({ tool: 'sequence_fetch', result }, args,
+      { agent, signal: new AbortController().signal }, file => downloads.add(file));
+    assert.equal(checked, true);
+    assert.match(output.result.file.path, /^\/original\/current\/sdh-/);
+    assert.equal(output.delivery.files[0].path, output.result.file.path);
+    const response = await fetch(output.result.file.downloadUrl);
+    assert.equal(response.status, 200);
+    const downloaded = Buffer.from(await response.arrayBuffer());
+    assert.equal(hash(downloaded), output.result.file.fileSha256);
+    assert.equal(downloaded.toString(), saved);
+    assert.equal(output.result.file.downloadUrl.includes('/api/file'), false);
+    services.workingDirectory.ensure = async () => { throw Error('workspace unavailable'); };
+    await assert.rejects(exportFasta({ result }, args, { agent, signal: new AbortController().signal }), /workspace unavailable/);
+  } finally { downloads.close(); }
 });
