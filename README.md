@@ -2,7 +2,7 @@
 
 将 Strawberry Data Hub 的草莓研究数据接入 DeepSeek Harness（DSH）。通过自然语言查询文献、解析基因、查看多组学上下文，并下载经过校验的 FASTA 序列。
 
-当前版本：**Beta 2**。公开版本按 Beta 1、Beta 2 展示；Beta 2 的 npm 安装包版本为 `0.1.0-beta.9`。安装时请指定完整版本，旧的 `0.1.0-beta.2` 包不包含本版全部功能。
+当前公开版本为 **Beta 2**，对应 npm 安装包 `0.1.0-beta.9`。默认安装只需输入包名 `dsh-strawberry-data-hub`。
 
 代谢物按原始名称分组计数，并明确参考目录的计数范围，避免将重复目录条目相加。以上数量仅针对本次返回的数据，不代表完整数据库或独立化合物数量。
 
@@ -53,10 +53,10 @@ BLAST 和 CRISPR 新任务提交请在网站使用。本版本支持 BerryPlot �
 ### 桌面客户端
 
 1. 打开左侧「插件」，进入添加插件入口。
-2. 输入完整包名 `dsh-strawberry-data-hub@0.1.0-beta.9`，按界面提示安装并启用。
+2. 在包名输入框填入 `dsh-strawberry-data-hub`，按界面提示安装并启用。DSH 会从所选包源读取默认版本。
 3. 在一个已选择工作区的新会话中，发送「请调用 sdh_database_status 检查草莓数据库连接，再列出基因组资源目录」。
 
-如果已安装旧版插件，在插件管理中改用上述完整版本。`0.1.0-beta.8` 的依赖声明只支持旧版 DSH，不能用于本次验证的桌面客户端。其他 DSH 版本需单独验证，不建议强制忽略兼容检查。
+如果安装预览仍显示旧版，请切换到官方 npm 源并新建安装任务。需要固定版本时，可输入 `dsh-strawberry-data-hub@0.1.0-beta.9`。其他 DSH 版本请查看对应的兼容性说明。
 
 FASTA 导出使用会话当前工作目录，提供原生附件及15分钟本机下载链接。关闭 DSH 后下载链接失效，已写入工作区的文件仍保留。绘图与预测准备、提交继续使用 DSH 的独立确认。
 
@@ -66,7 +66,7 @@ FASTA 导出使用会话当前工作目录，提供原生附件及15分钟本机
 
 ```powershell
 dsh --profile strawberry --from-default-profile web --dump-config
-dsh plugin --profile strawberry add dsh-strawberry-data-hub@0.1.0-beta.9
+dsh plugin --profile strawberry add dsh-strawberry-data-hub
 dsh --profile strawberry --dump-config
 dsh --profile strawberry
 ```
